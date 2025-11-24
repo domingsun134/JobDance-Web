@@ -3,26 +3,26 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { registerUser, signInWithLinkedIn } from "@/lib/auth";
-import { FiMail } from "react-icons/fi";
-import { FcGoogle } from "react-icons/fc";
-import { FaLinkedin } from "react-icons/fa";
+import { registerUser } from "@/lib/auth";
 import Logo from "@/components/Logo";
-
-type RegisterMethod = "social" | "email";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [method, setMethod] = useState<RegisterMethod>("social");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!acceptedTerms) {
+      setError("You must accept the Terms of Service and Privacy Policy to continue");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
@@ -46,32 +46,6 @@ export default function RegisterPage() {
     }
   };
 
-  const handleSocialLogin = async (provider: "google" | "linkedin") => {
-    setError("");
-    setLoading(true);
-    
-    try {
-      if (provider === "linkedin") {
-        await signInWithLinkedIn();
-        // The redirect will happen automatically, so we don't need to do anything else
-      } else {
-        // Google OAuth can be added later
-        setError("Google registration is not yet available");
-        setLoading(false);
-      }
-    } catch (err: any) {
-      let errorMessage = err.message || `Failed to register with ${provider}`;
-      
-      // Provide more helpful error message for LinkedIn
-      if (provider === "linkedin" && (errorMessage.includes("not enabled") || errorMessage.includes("Unsupported provider"))) {
-        errorMessage = "LinkedIn registration is not enabled. Please enable it in the Supabase dashboard under Authentication → Providers → LinkedIn.";
-      }
-      
-      setError(errorMessage);
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-4 sm:py-8 bg-gray-900">
       <div className="w-full max-w-md animate-slide-in-up">
@@ -86,32 +60,6 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Register Method Tabs */}
-        <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 bg-gray-800 p-1 rounded-xl animate-fade-in" style={{ animationDelay: "0.4s" }}>
-          <button
-            type="button"
-            onClick={() => setMethod("social")}
-            className={`flex-1 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all duration-300 ${
-              method === "social"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/50"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Social
-          </button>
-          <button
-            type="button"
-            onClick={() => setMethod("email")}
-            className={`flex-1 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 ${
-              method === "email"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/50"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <FiMail className="text-sm sm:text-base" />
-            Email
-          </button>
-        </div>
 
         {/* Form Content Container - Fixed height to prevent layout shift */}
         <div className="min-h-[240px] sm:min-h-[360px] relative">
@@ -122,30 +70,8 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Social Register */}
-          {method === "social" && (
-            <div className="space-y-3 animate-fade-in">
-              <button
-                onClick={() => handleSocialLogin("google")}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-medium text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 active:scale-95"
-              >
-                <FcGoogle className="text-xl sm:text-2xl bg-white rounded-full p-0.5" />
-                <span>Continue with Google</span>
-              </button>
-              <button
-                onClick={() => handleSocialLogin("linkedin")}
-                disabled={loading}
-                className="w-full bg-[#0077b5] hover:bg-[#006399] text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-medium text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 shadow-lg shadow-[#0077b5]/30 hover:shadow-[#0077b5]/50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FaLinkedin className="text-xl sm:text-2xl" />
-                <span>{loading ? "Connecting..." : "Continue with LinkedIn"}</span>
-              </button>
-            </div>
-          )}
-
           {/* Email Register */}
-          {method === "email" && (
-            <form onSubmit={handleEmailSubmit} className="space-y-4 animate-fade-in">
+          <form onSubmit={handleEmailSubmit} className="space-y-4 animate-fade-in">
               <div>
                 <input
                   type="email"
@@ -176,28 +102,37 @@ export default function RegisterPage() {
                   placeholder="Confirm your password"
                 />
               </div>
+              
+              {/* Terms Acceptance Checkbox */}
+              <div className="flex items-start">
+                <input
+                  type="checkbox"
+                  id="acceptTerms"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1 mr-2 flex-shrink-0"
+                />
+                <label htmlFor="acceptTerms" className="text-xs sm:text-sm text-gray-400 cursor-pointer">
+                  I agree to the{" "}
+                  <Link href="/terms" className="text-blue-400 hover:text-blue-300 underline">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/privacy" className="text-blue-400 hover:text-blue-300 underline">
+                    Privacy Policy
+                  </Link>
+                </label>
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !acceptedTerms}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 active:scale-95"
               >
                 {loading ? "Creating account..." : "Create Account"}
               </button>
             </form>
-          )}
         </div>
-
-        {/* Separator */}
-        {method === "social" && (
-          <div className="relative my-3 sm:my-4 animate-fade-in">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-700"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-gray-900 text-gray-400">or</span>
-            </div>
-          </div>
-        )}
 
         {/* Sign In Link */}
         <Link
@@ -214,13 +149,13 @@ export default function RegisterPage() {
         {/* Footer */}
         <p className="mt-4 sm:mt-8 text-center text-xs text-gray-500 animate-fade-in" style={{ animationDelay: "0.6s" }}>
           By continuing, you agree to our{" "}
-          <a href="#" className="text-blue-400 hover:text-blue-300 underline">
+          <Link href="/terms" className="text-blue-400 hover:text-blue-300 underline">
             Terms of Service
-          </a>{" "}
+          </Link>{" "}
           and{" "}
-          <a href="#" className="text-blue-400 hover:text-blue-300 underline">
+          <Link href="/privacy" className="text-blue-400 hover:text-blue-300 underline">
             Privacy Policy
-          </a>
+          </Link>
         </p>
       </div>
     </div>

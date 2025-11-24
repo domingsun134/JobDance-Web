@@ -72,18 +72,34 @@ export async function getServerSupabaseClient() {
   return supabase;
 }
 
+// Helper to add timeout to promises
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+    )
+  ]);
+}
+
 // Get current user in server-side context (API routes)
 export async function getServerUser(request?: Request) {
   try {
-    // First, try to get user from Authorization header (Bearer token)
+    // First, try to get user from Authorization header (Bearer token) - this is faster and more reliable
     if (request) {
       const authHeader = request.headers.get('authorization');
       const token = authHeader?.replace('Bearer ', '');
       
       if (token) {
         try {
+          // Add timeout to token validation (3 seconds max)
           const supabase = createClient(supabaseUrl, supabaseAnonKey);
-          const { data: { user }, error } = await supabase.auth.getUser(token);
+          const userPromise = supabase.auth.getUser(token);
+          const { data: { user }, error } = await withTimeout(
+            userPromise,
+            3000,
+            'Token validation timed out'
+          );
           
           if (!error && user) {
             console.log('User authenticated via Bearer token');
@@ -95,38 +111,57 @@ export async function getServerUser(request?: Request) {
             console.warn('Error validating Bearer token:', error.message);
           }
         } catch (tokenError: any) {
-          console.warn('Error processing Bearer token:', tokenError.message);
+          if (tokenError.message?.includes('timed out')) {
+            console.warn('Token validation timed out - trying cookie fallback');
+          } else {
+            console.warn('Error processing Bearer token:', tokenError.message);
+          }
         }
       } else {
         console.warn('No Authorization header found in request');
       }
     }
     
-    // Fallback: try to get from cookies
+    // Fallback: try to get from cookies (with timeout)
     try {
-      const supabase = await getServerSupabaseClient();
+      const cookieAuthPromise = (async () => {
+        const supabase = await getServerSupabaseClient();
+        
+        // First try to get the session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!sessionError && session?.user) {
+          return {
+            id: session.user.id,
+            email: session.user.email || '',
+          };
+        }
+        
+        // Fallback: try getUser() directly
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (!error && user) {
+          return {
+            id: user.id,
+            email: user.email || '',
+          };
+        }
+        
+        return null;
+      })();
       
-      // First try to get the session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (!sessionError && session?.user) {
-        return {
-          id: session.user.id,
-          email: session.user.email || '',
-        };
-      }
-      
-      // Fallback: try getUser() directly
-      const { data: { user }, error } = await supabase.auth.getUser();
-      
-      if (!error && user) {
-        return {
-          id: user.id,
-          email: user.email || '',
-        };
-      }
+      // Add timeout to cookie-based auth (2 seconds max)
+      return await withTimeout(
+        cookieAuthPromise,
+        2000,
+        'Cookie-based auth timed out'
+      );
     } catch (cookieError: any) {
-      console.warn('Error reading user from cookies:', cookieError.message);
+      if (cookieError.message?.includes('timed out')) {
+        console.warn('Cookie-based authentication timed out');
+      } else {
+        console.warn('Error reading user from cookies:', cookieError.message);
+      }
     }
     
     return null;
@@ -142,7 +177,8 @@ export async function getServerUserProfile(userId: string) {
     const supabase = await getServerSupabaseClient();
     
     // Fetch all profile data in parallel
-    const [workExpResult, educationResult, skillsResult, languagesResult, availabilityResult, salaryResult] = await Promise.all([
+    // Wrap the entire operation in a timeout to prevent hanging on mobile
+    const profileDataPromise = Promise.all([
       supabase.from('work_experience').select('*').eq('user_id', userId),
       supabase.from('education').select('*').eq('user_id', userId),
       supabase.from('skills').select('*').eq('user_id', userId),
@@ -150,6 +186,13 @@ export async function getServerUserProfile(userId: string) {
       supabase.from('availability').select('*').eq('user_id', userId).single(),
       supabase.from('expected_salary').select('*').eq('user_id', userId).single(),
     ]);
+    
+    // Add timeout to entire profile loading (3 seconds max)
+    const [workExpResult, educationResult, skillsResult, languagesResult, availabilityResult, salaryResult] = await withTimeout(
+      profileDataPromise,
+      3000,
+      'Profile loading timed out'
+    );
 
     return {
       workExperience: (workExpResult.data || []).map((exp: any) => ({

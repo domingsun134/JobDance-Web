@@ -4,10 +4,9 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser, getUserProfile, type User, type UserProfile } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import { FiMic, FiSend, FiX, FiVideo, FiVideoOff, FiVolume2, FiVolumeX, FiMicOff } from "react-icons/fi";
+import { FiMic, FiSend, FiX, FiVolume2, FiVolumeX, FiMicOff } from "react-icons/fi";
 import BottomNav from "@/components/BottomNav";
 import { SpeechSynthesis } from "@/lib/speech";
-import { VideoRecorder } from "@/lib/videoRecorder";
 import { SpeechRecognition } from "@/lib/speechRecognition";
 
 interface Message {
@@ -28,26 +27,19 @@ export default function InterviewPage() {
   const [isClosing, setIsClosing] = useState(false);
   const MAX_QUESTIONS = 5; // Maximum number of questions in the interview
   
-  // Video and audio states
-  const [isRecording, setIsRecording] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  // Audio states
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [videoError, setVideoError] = useState<string | null>(null);
   
   // Voice input states
   const [isListening, setIsListening] = useState(false);
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const [voiceInputMode, setVoiceInputMode] = useState(true); // Default to voice mode
   const [interimTranscript, setInterimTranscript] = useState("");
+  const [microphonePermission, setMicrophonePermission] = useState<'granted' | 'denied' | 'prompt' | 'checking'>('checking');
   
   // Refs
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const videoRecorderRef = useRef<VideoRecorder | null>(null);
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null);
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const initialQuestionReceivedRef = useRef<boolean>(false);
@@ -76,6 +68,16 @@ export default function InterviewPage() {
     // Initialize speech synthesis and recognition
     speechSynthesisRef.current = new SpeechSynthesis();
     speechRecognitionRef.current = new SpeechRecognition();
+    
+    // Log speech recognition support for debugging
+    if (speechRecognitionRef.current) {
+      const isSupported = speechRecognitionRef.current.isSupported();
+      console.log('Speech recognition initialized:', {
+        supported: isSupported,
+        userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'N/A',
+        isIOS: typeof window !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+      });
+    }
 
     // Cleanup on unmount
     return () => {
@@ -85,14 +87,53 @@ export default function InterviewPage() {
       if (speechRecognitionRef.current) {
         speechRecognitionRef.current.stop();
       }
-      if (videoRecorderRef.current) {
-        videoRecorderRef.current.stopRecording().catch(() => {});
-      }
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-      }
     };
   }, [router]);
+
+  // Check microphone permission status (but don't request yet - iOS requires user interaction)
+  useEffect(() => {
+    async function checkMicrophonePermission() {
+      // Only check if speech recognition is supported
+      if (!speechRecognitionRef.current?.isSupported()) {
+        setMicrophonePermission('denied');
+        return;
+      }
+
+      // For non-iOS devices, check permission status
+      const isIOSDevice = typeof window !== 'undefined' && 
+        (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+      if (!isIOSDevice) {
+        try {
+          if (navigator.permissions && navigator.permissions.query) {
+            const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+            setMicrophonePermission(result.state === 'granted' ? 'granted' : 'prompt');
+            
+            // Listen for permission changes
+            result.onchange = () => {
+              setMicrophonePermission(result.state === 'granted' ? 'granted' : 'denied');
+            };
+          } else {
+            setMicrophonePermission('prompt');
+          }
+        } catch (error) {
+          console.log('Permission query not supported, will request on use');
+          setMicrophonePermission('prompt');
+        }
+      } else {
+        // For iOS, set to 'prompt' - we'll request when user clicks Start Interview
+        setMicrophonePermission('prompt');
+      }
+    }
+
+    // Check permission status after a short delay
+    const timer = setTimeout(() => {
+      checkMicrophonePermission();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -102,6 +143,80 @@ export default function InterviewPage() {
   }, [messages, isLoading, currentQuestion]);
 
   const startInterview = async () => {
+    // For iOS, request microphone permission first (requires user interaction)
+    // IMPORTANT: This must be called directly in the click handler to preserve user interaction context
+    const isIOSDevice = typeof window !== 'undefined' && 
+      (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+    if (isIOSDevice && voiceInputMode) {
+      // Check if we need to request permission
+      // Request microphone permission directly using getUserMedia
+      // This must happen synchronously in the click handler to trigger iOS prompt
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Microphone access is not available in this browser.');
+        return;
+      }
+
+      // Check if we're on HTTPS (required for iOS)
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        alert('Microphone access requires HTTPS. Please access this site over HTTPS.');
+        return;
+      }
+
+      // Request permission if not already granted
+      // On iOS with "Ask" setting, we need to request every time until granted
+      if (microphonePermission !== 'granted') {
+        try {
+          console.log('🎤 Requesting microphone permission on iOS...');
+          setMicrophonePermission('checking');
+          
+          // Call getUserMedia directly - this will trigger iOS permission prompt
+          // This MUST be called within the user interaction handler (button click)
+          // The await preserves the user interaction context
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            } 
+          });
+          
+          // Stop the stream immediately - we just needed permission
+          stream.getTracks().forEach(track => track.stop());
+          
+          // Update permission status
+          setMicrophonePermission('granted');
+          if (speechRecognitionRef.current) {
+            speechRecognitionRef.current.setMicrophonePermissionGranted(true);
+          }
+          
+          console.log('✅ Microphone permission granted on iOS');
+        } catch (error: any) {
+          console.error('❌ Microphone permission error:', error);
+          console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          });
+          
+          setMicrophonePermission('denied');
+          if (speechRecognitionRef.current) {
+            speechRecognitionRef.current.setMicrophonePermissionGranted(false);
+          }
+          
+          if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            alert('Microphone permission was denied. Please:\n1. Go to Settings > Safari > Microphone\n2. Allow access for this website\n3. Refresh the page and try again');
+          } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            alert('No microphone found. Please connect a microphone and try again.');
+          } else {
+            alert(`Microphone permission error: ${error.message || error.name}. Please ensure you allow microphone access when prompted.`);
+          }
+          return;
+        }
+      }
+    }
+
     setIsInterviewing(true);
     setIsLoading(true);
     initialQuestionReceivedRef.current = false; // Reset flag
@@ -110,7 +225,7 @@ export default function InterviewPage() {
     // This prevents the UI from being stuck on "AI is thinking" indefinitely
     const safetyTimeout = setTimeout(() => {
       if (!initialQuestionReceivedRef.current) {
-        console.warn('Safety timeout triggered - showing fallback question (likely network issue on mobile)');
+        console.warn('Safety timeout triggered - showing fallback question (likely network issue)');
         initialQuestionReceivedRef.current = true; // Mark as handled
         const fallbackQuestion = "Tell me about yourself.";
         setCurrentQuestion(fallbackQuestion);
@@ -123,119 +238,96 @@ export default function InterviewPage() {
           setIsAISpeaking(true);
           speechSynthesisRef.current.speak(fallbackQuestion, () => {
             setIsAISpeaking(false);
-            if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+            // iOS requires manual button click, skip auto-start
+            if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
               startVoiceInput();
             }
           });
         } else {
-          if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+          // iOS requires manual button click, skip auto-start
+          if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
             setTimeout(() => startVoiceInput(), 500);
           }
         }
       }
     }, 35000); // 35 seconds safety timeout
     
-    // Resume audio context on user interaction (required for autoplay)
-    if (speechSynthesisRef.current) {
-      // This will resume the audio context if it's suspended
+    // Start API call IMMEDIATELY (don't wait for audio setup)
+    // This makes the first question load much faster
+    const fetchInitialQuestion = async () => {
       try {
-        // Trigger a silent audio play to resume context
-        const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
-        await silentAudio.play().catch(() => {});
-      } catch (e) {
-        // Ignore errors
-      }
-    }
-
-    // Start video recording
-    if (isVideoEnabled && videoRef.current) {
-      try {
-        setVideoError(null);
-        videoRecorderRef.current = new VideoRecorder();
-        await videoRecorderRef.current.startRecording(videoRef.current);
-        setIsRecording(true);
+        // Get session token to pass to API
+        let token: string | null = null;
+        try {
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) {
+            console.warn('Error getting session for initial question:', sessionError.message);
+          }
+          token = session?.access_token || null;
+          if (!token) {
+            console.warn('No session token available for initial question');
+          }
+        } catch (tokenError: any) {
+          console.error('Error retrieving session token:', tokenError);
+        }
         
-        // Start recording timer
-        setRecordingTime(0);
-        recordingTimerRef.current = setInterval(() => {
-          setRecordingTime(prev => prev + 1);
-        }, 1000);
-      } catch (error: any) {
-        console.error('Failed to start recording:', error);
-        setVideoError(error.message || 'Failed to start video recording');
-        setIsVideoEnabled(false);
-        // Continue with interview even if video fails
-      }
-    }
+        // Create a system message for the first question
+        const initialMessages = [{
+          role: "user" as const,
+          content: profile?.workExperience && profile.workExperience.length > 0
+            ? `I'm ready to start the interview. I have experience as ${profile.workExperience[0].position} at ${profile.workExperience[0].company}.`
+            : profile?.education && profile.education.length > 0
+            ? `I'm ready to start the interview. I studied ${profile.education[0].field} at ${profile.education[0].institution}.`
+            : "I'm ready to start the interview."
+        }];
 
-    // Generate initial interview question using AI based on user profile
-    try {
-      // Get session token to pass to API
-      let token: string | null = null;
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.warn('Error getting session for initial question:', sessionError.message);
-        }
-        token = session?.access_token || null;
-        if (!token) {
-          console.warn('No session token available for initial question');
-        }
-      } catch (tokenError: any) {
-        console.error('Error retrieving session token:', tokenError);
-      }
-      
-      // Create a system message for the first question
-      const initialMessages = [{
-        role: "user" as const,
-        content: profile?.workExperience && profile.workExperience.length > 0
-          ? `I'm ready to start the interview. I have experience as ${profile.workExperience[0].position} at ${profile.workExperience[0].company}.`
-          : profile?.education && profile.education.length > 0
-          ? `I'm ready to start the interview. I studied ${profile.education[0].field} at ${profile.education[0].institution}.`
-          : "I'm ready to start the interview."
-      }];
-
-      console.log('Fetching initial AI question...');
-      
-      // Create AbortController for timeout (important for mobile)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      try {
-        // Call AWS Bedrock API for initial AI question
-        const response = await fetch('/api/ai/respond', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` }),
-          },
-          credentials: 'include',
-          body: JSON.stringify({ messages: initialMessages }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('API response error:', response.status, errorText);
-          throw new Error(`Failed to get initial AI question: ${response.status} ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log('Received AI response:', data);
-        const initialQuestion = data.response || "Tell me about yourself.";
+        console.log('Fetching initial AI question...');
         
-        if (!initialQuestion || initialQuestion.trim() === '') {
-          throw new Error('Empty response from AI');
-        }
+        // Use same timeout for both mobile and desktop (30 seconds)
+        const fetchTimeout = 30000;
+        
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.warn(`Fetch timeout after ${fetchTimeout}ms`);
+          controller.abort();
+        }, fetchTimeout);
+        
+        try {
+          // Call AWS Bedrock API for initial AI question
+          const response = await fetch('/api/ai/respond', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` }),
+            },
+            credentials: 'include',
+            body: JSON.stringify({ messages: initialMessages }),
+            signal: controller.signal,
+          });
 
-        clearTimeout(safetyTimeout); // Clear safety timeout since we got a response
-        initialQuestionReceivedRef.current = true; // Mark as received
-        setCurrentQuestion(initialQuestion);
-        setMessages([{ role: "assistant", content: initialQuestion }]);
-        setQuestionCount(1); // First question
-        setIsLoading(false);
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API response error:', response.status, errorText);
+            throw new Error(`Failed to get initial AI question: ${response.status} ${errorText}`);
+          }
+
+          const data = await response.json();
+          console.log('Received AI response:', data);
+          const initialQuestion = data.response || "Tell me about yourself.";
+          
+          if (!initialQuestion || initialQuestion.trim() === '') {
+            throw new Error('Empty response from AI');
+          }
+
+          clearTimeout(safetyTimeout); // Clear safety timeout since we got a response
+          initialQuestionReceivedRef.current = true; // Mark as received
+          setCurrentQuestion(initialQuestion);
+          setMessages([{ role: "assistant", content: initialQuestion }]);
+          setQuestionCount(1); // First question
+          setIsLoading(false);
 
         // Speak the initial question using AWS Polly
         if (isAudioEnabled && speechSynthesisRef.current) {
@@ -243,84 +335,109 @@ export default function InterviewPage() {
           await speechSynthesisRef.current.speak(initialQuestion, () => {
             setIsAISpeaking(false);
             // Auto-start listening after AI finishes speaking (if voice mode is enabled)
-            if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+            // Note: iOS requires manual button click, so we skip auto-start on iOS
+            if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
               startVoiceInput();
             }
           });
         } else {
-          // If audio is disabled, still auto-start listening in voice mode
-          if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+          // If audio is disabled, still auto-start listening in voice mode (but not on iOS)
+          if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
             setTimeout(() => startVoiceInput(), 500);
           }
         }
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        console.error('Error fetching initial AI question:', fetchError);
-        
-        // Check if it's a timeout or abort error
-        if (fetchError.name === 'AbortError' || fetchError.message?.includes('timeout')) {
-          console.error('Request timed out - this may be a network issue on mobile');
-          // Don't show alert on mobile as it might be annoying, just use fallback
-          if (typeof window !== 'undefined' && !/iPad|iPhone|iPod|Android/.test(navigator.userAgent)) {
+        } catch (fetchError: any) {
+          clearTimeout(timeoutId);
+          console.error('Error fetching initial AI question:', fetchError);
+          
+          // Check if it's a timeout or abort error
+          if (fetchError.name === 'AbortError' || fetchError.message?.includes('timeout')) {
+            console.error(`Request timed out after ${fetchTimeout}ms - using fallback question`);
+            // Show alert on both mobile and desktop
             alert('The request timed out. Please check your internet connection and try again.');
+          } else {
+            console.error('Fetch error details:', {
+              name: fetchError.name,
+              message: fetchError.message,
+              status: (fetchError as any).status,
+              stack: fetchError.stack
+            });
+            
+            // If it's a 504 Gateway Timeout, that's also a timeout case
+            if ((fetchError as any).status === 504) {
+              console.warn('Server returned 504 Gateway Timeout - using fallback question');
+            }
           }
-        } else {
-          console.error('Fetch error details:', {
-            name: fetchError.name,
-            message: fetchError.message,
-            stack: fetchError.stack
-          });
+          
+          clearTimeout(safetyTimeout); // Clear safety timeout since we're handling the error
+          initialQuestionReceivedRef.current = true; // Mark as handled
+          // Always show fallback question, even on error
+          const fallbackQuestion = "Tell me about yourself.";
+          setCurrentQuestion(fallbackQuestion);
+          setMessages([{ role: "assistant", content: fallbackQuestion }]);
+          setQuestionCount(1);
+          setIsLoading(false);
+          
+          // Speak the fallback question
+          if (isAudioEnabled && speechSynthesisRef.current) {
+            setIsAISpeaking(true);
+            await speechSynthesisRef.current.speak(fallbackQuestion, () => {
+              setIsAISpeaking(false);
+              // iOS requires manual button click, skip auto-start
+              if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
+                startVoiceInput();
+              }
+            });
+          } else {
+            // If audio disabled, still auto-start listening in voice mode (but not on iOS)
+            if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
+              setTimeout(() => startVoiceInput(), 500);
+            }
+          }
         }
-        
+      } catch (error: any) {
         clearTimeout(safetyTimeout); // Clear safety timeout since we're handling the error
         initialQuestionReceivedRef.current = true; // Mark as handled
-        // Always show fallback question, even on error
+        console.error('Error getting initial AI question (outer catch):', error);
+        // Fallback to simple question
         const fallbackQuestion = "Tell me about yourself.";
         setCurrentQuestion(fallbackQuestion);
         setMessages([{ role: "assistant", content: fallbackQuestion }]);
         setQuestionCount(1);
         setIsLoading(false);
-        
+
         // Speak the fallback question
         if (isAudioEnabled && speechSynthesisRef.current) {
           setIsAISpeaking(true);
           await speechSynthesisRef.current.speak(fallbackQuestion, () => {
             setIsAISpeaking(false);
-            if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+            // iOS requires manual button click, skip auto-start
+            if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
               startVoiceInput();
             }
           });
         } else {
-          // If audio disabled, still auto-start listening in voice mode
-          if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+          // iOS requires manual button click, skip auto-start
+          if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
             setTimeout(() => startVoiceInput(), 500);
           }
         }
       }
-    } catch (error: any) {
-      clearTimeout(safetyTimeout); // Clear safety timeout since we're handling the error
-      initialQuestionReceivedRef.current = true; // Mark as handled
-      console.error('Error getting initial AI question (outer catch):', error);
-      // Fallback to simple question
-      const fallbackQuestion = "Tell me about yourself.";
-      setCurrentQuestion(fallbackQuestion);
-      setMessages([{ role: "assistant", content: fallbackQuestion }]);
-      setQuestionCount(1);
-      setIsLoading(false);
+    };
 
-      // Speak the fallback question
-      if (isAudioEnabled && speechSynthesisRef.current) {
-        setIsAISpeaking(true);
-        await speechSynthesisRef.current.speak(fallbackQuestion, () => {
-          setIsAISpeaking(false);
-          if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
-            startVoiceInput();
-          }
-        });
-      } else {
-        if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
-          setTimeout(() => startVoiceInput(), 500);
-        }
+    // Start API call immediately (don't wait for audio setup)
+    fetchInitialQuestion();
+
+    // Resume audio context on user interaction (required for autoplay)
+    // This runs in parallel with the API call (non-blocking)
+    if (speechSynthesisRef.current) {
+      // This will resume the audio context if it's suspended
+      try {
+        // Trigger a silent audio play to resume context
+        const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
+        silentAudio.play().catch(() => {}); // Don't await - run in parallel
+      } catch (e) {
+        // Ignore errors
       }
     }
   };
@@ -485,13 +602,14 @@ export default function InterviewPage() {
         await speechSynthesisRef.current.speak(nextQuestion, () => {
           setIsAISpeaking(false);
           // Auto-start listening after AI finishes speaking (if voice mode is enabled)
-          if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+          // iOS requires manual button click, skip auto-start
+          if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
             setTimeout(() => startVoiceInput(), 500);
           }
         });
       } else {
-        // If audio disabled, still auto-start listening in voice mode
-        if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+        // If audio disabled, still auto-start listening in voice mode (but not on iOS)
+        if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
           setTimeout(() => startVoiceInput(), 500);
         }
       }
@@ -507,7 +625,8 @@ export default function InterviewPage() {
         setIsAISpeaking(true);
         await speechSynthesisRef.current.speak(fallbackResponse, () => {
           setIsAISpeaking(false);
-          if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+          // iOS requires manual button click, skip auto-start
+          if (voiceInputMode && speechRecognitionRef.current?.isSupported() && !isIOS()) {
             setTimeout(() => startVoiceInput(), 500);
           }
         });
@@ -515,8 +634,22 @@ export default function InterviewPage() {
     }
   };
 
-  const startVoiceInput = () => {
-    if (!speechRecognitionRef.current || isListening || isAISpeaking) return;
+  // Helper to detect iOS
+  const isIOS = () => {
+    if (typeof window === 'undefined') return false;
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  };
+
+  const startVoiceInput = async () => {
+    if (!speechRecognitionRef.current || isListening || isAISpeaking) {
+      console.log('Cannot start voice input:', {
+        hasRecognition: !!speechRecognitionRef.current,
+        isListening,
+        isAISpeaking
+      });
+      return;
+    }
 
     // Check if speech recognition is supported
     if (!speechRecognitionRef.current.isSupported()) {
@@ -525,42 +658,62 @@ export default function InterviewPage() {
       return;
     }
 
+    console.log('Starting voice input...');
     setIsListening(true);
     setInterimTranscript("");
 
-    speechRecognitionRef.current.start(
-      (text: string, isInterim?: boolean) => {
-        if (isInterim) {
-          // Show interim results in real-time
-          setInterimTranscript(text);
-        } else {
-          // When we get a final result, submit it
-          setInterimTranscript("");
-          if (text.trim()) {
-            submitAnswer(text);
+    try {
+      await speechRecognitionRef.current.start(
+        (text: string, isInterim?: boolean) => {
+          console.log('Speech recognition result:', { text, isInterim });
+          if (isInterim) {
+            // Show interim results in real-time
+            setInterimTranscript(text);
           } else {
-            // If no text, just stop listening and wait for next input
-            setIsListening(false);
+            // When we get a final result, submit it
+            console.log('Final transcript received:', text);
+            setInterimTranscript("");
+            if (text.trim()) {
+              submitAnswer(text);
+            } else {
+              // If no text, just stop listening and wait for next input
+              setIsListening(false);
+            }
+          }
+        },
+        (error: string) => {
+          console.error('Speech recognition error:', error);
+          setIsListening(false);
+          setInterimTranscript("");
+          
+          // For iOS, some errors are expected and we should allow retry
+          if (error === 'no-speech' || error.includes('no-speech') || error.includes('audio-capture')) {
+            // These are common on mobile, just stop listening
+            console.log('No speech detected - this is normal');
+            return;
+          }
+          
+          // For other errors, show a message but don't switch modes automatically
+          if (error.includes('not-allowed') || error.includes('permission') || error === 'not-allowed') {
+            if (isIOS()) {
+              alert('Microphone permission is required. Please go to Settings > Safari > Microphone and enable it, then refresh the page.');
+            } else {
+              alert('Microphone permission is required for voice input. Please enable it in your browser settings.');
+            }
+          } else if (error !== 'aborted' && error !== 'network') {
+            // Don't show alerts for aborted or network errors
+            console.warn('Speech recognition error (non-critical):', error);
           }
         }
-      },
-      (error: string) => {
-        console.error('Speech recognition error:', error);
-        setIsListening(false);
-        setInterimTranscript("");
-        
-        // For iOS, some errors are expected and we should allow retry
-        if (error.includes('no-speech') || error.includes('audio-capture')) {
-          // These are common on mobile, just stop listening
-          return;
-        }
-        
-        // For other errors, show a message but don't switch modes automatically
-        if (error.includes('not-allowed') || error.includes('permission')) {
-          alert('Microphone permission is required for voice input. Please enable it in your browser settings.');
-        }
+      );
+    } catch (error: any) {
+      console.error('Error starting voice input:', error);
+      setIsListening(false);
+      setInterimTranscript("");
+      if (isIOS()) {
+        alert('Failed to start voice input. Please ensure microphone permission is granted in Safari settings.');
       }
-    );
+    }
   };
 
   const stopVoiceInput = () => {
@@ -571,11 +724,21 @@ export default function InterviewPage() {
     }
   };
 
-  const toggleVoiceInput = () => {
+  const toggleVoiceInput = async (e?: React.MouseEvent | React.TouchEvent) => {
+    // Prevent default to ensure proper event handling on mobile
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (isListening) {
+      console.log('Stopping voice input');
       stopVoiceInput();
     } else {
-      startVoiceInput();
+      console.log('Starting voice input via button click');
+      // Start immediately to preserve user interaction context (critical for iOS)
+      // Don't use setTimeout as it breaks the user interaction context on iOS
+      await startVoiceInput();
     }
   };
 
@@ -630,62 +793,6 @@ export default function InterviewPage() {
       setInterimTranscript("");
     }
 
-    let videoUrlFinal = null;
-
-    // Stop video recording and upload to S3
-    if (videoRecorderRef.current && isRecording) {
-      try {
-        const blob = await videoRecorderRef.current.stopRecording();
-        
-        // Upload to S3 (non-blocking - continue even if it fails)
-        if (user && blob.size > 0) {
-          try {
-            const formData = new FormData();
-            formData.append('video', blob, `interview-${Date.now()}.webm`);
-            formData.append('sessionId', Date.now().toString());
-
-            // Get session token for video upload
-            const { data: { session: uploadSession } } = await supabase.auth.getSession();
-            const uploadToken = uploadSession?.access_token;
-            
-            const uploadResponse = await fetch('/api/video/upload', {
-              method: 'POST',
-              headers: {
-                ...(uploadToken && { 'Authorization': `Bearer ${uploadToken}` }),
-              },
-              credentials: 'include',
-              body: formData,
-            });
-
-            if (uploadResponse.ok) {
-              const { url } = await uploadResponse.json();
-              videoUrlFinal = url;
-              console.log('Video uploaded to S3:', url);
-              // Set the S3 URL instead of blob URL
-              if (url) {
-                setVideoUrl(url);
-              }
-            } else {
-              const errorData = await uploadResponse.json().catch(() => ({}));
-              console.warn('Video upload failed (non-critical):', errorData.error || 'Unknown error');
-            }
-          } catch (uploadError: any) {
-            console.warn('Error uploading video to S3 (non-critical):', uploadError.message || uploadError);
-            // Continue even if upload fails - video is optional
-          }
-        }
-      } catch (error: any) {
-        console.warn('Error stopping recording (non-critical):', error.message || error);
-        // Continue even if recording stop fails
-      }
-      setIsRecording(false);
-    }
-
-    // Clear timer
-    if (recordingTimerRef.current) {
-      clearInterval(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
 
     // Generate report and save session
     // Ensure we have a valid user session before proceeding
@@ -728,7 +835,7 @@ export default function InterviewPage() {
             credentials: 'include',
             body: JSON.stringify({
               messages: messages,
-              duration: recordingTime,
+              duration: 0,
             }),
             signal: reportController.signal,
           });
@@ -785,8 +892,7 @@ export default function InterviewPage() {
                 currentQuestion: currentQuestion,
               },
               report: report,
-              duration: recordingTime,
-              videoUrl: videoUrlFinal,
+              duration: 0,
             }),
           });
 
@@ -816,8 +922,7 @@ export default function InterviewPage() {
           const tempReportData = {
             report: report,
             messages: messages,
-            duration: recordingTime,
-            videoUrl: videoUrlFinal,
+            duration: 0,
             timestamp: Date.now(),
           };
           sessionStorage.setItem('temp_interview_report', JSON.stringify(tempReportData));
@@ -837,23 +942,9 @@ export default function InterviewPage() {
     setMessages([]);
     setCurrentQuestion("");
     setUserAnswer("");
-    setRecordingTime(0);
     setInterimTranscript("");
     setQuestionCount(0);
     setIsLoading(false);
-  };
-
-  const toggleVideo = () => {
-    setIsVideoEnabled(!isVideoEnabled);
-    if (videoRecorderRef.current) {
-      const stream = videoRecorderRef.current.getStream();
-      if (stream) {
-        const videoTrack = stream.getVideoTracks()[0];
-        if (videoTrack) {
-          videoTrack.enabled = !isVideoEnabled;
-        }
-      }
-    }
   };
 
   const toggleAudio = () => {
@@ -865,12 +956,6 @@ export default function InterviewPage() {
       // Stop speaking if audio was disabled
       speechSynthesisRef.current.stop();
     }
-  };
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (!user) {
@@ -901,12 +986,6 @@ export default function InterviewPage() {
             </div>
             {isInterviewing && (
               <div className="flex items-center gap-3">
-                {isRecording && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-red-500/20 rounded-xl border border-red-500/30 shadow-lg shadow-red-500/20">
-                    <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="text-red-300 text-sm font-bold">{formatTime(recordingTime)}</span>
-                  </div>
-                )}
                 {questionCount > 0 && (
                   <div className="flex items-center gap-2 px-4 py-2 bg-primary-500/20 rounded-xl border border-primary-500/30">
                     <span className="text-primary-300 text-sm font-semibold">Question {questionCount}/{MAX_QUESTIONS}</span>
@@ -933,9 +1012,117 @@ export default function InterviewPage() {
               </div>
               <h2 className="text-3xl font-bold text-white mb-3">Ready to Practice?</h2>
               <p className="text-gray-400 text-base leading-relaxed max-w-2xl mx-auto">
-                Start an AI-powered interview session with real-time video recording. Answer questions naturally, and our AI will speak to you and provide intelligent follow-up questions.
+                Start an AI-powered interview session. Answer questions naturally, and our AI will speak to you and provide intelligent follow-up questions.
               </p>
             </div>
+
+            {/* Microphone Permission Status */}
+            {microphonePermission === 'checking' && (
+              <div className="mb-6 glass rounded-2xl p-5 border border-blue-500/40 bg-gradient-to-r from-blue-500/10 to-blue-600/10 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
+                  <p className="text-blue-300 text-sm font-medium">
+                    Requesting microphone permission...
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {microphonePermission === 'prompt' && isIOS() && voiceInputMode && (
+              <div className="mb-6 glass rounded-2xl p-5 border border-blue-500/40 bg-gradient-to-r from-blue-500/10 to-blue-600/10 backdrop-blur-sm">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-blue-300 text-sm font-semibold mb-2">Microphone Access Required</p>
+                    <p className="text-blue-200 text-sm">
+                      When you click "Start Interview", your iPhone will prompt you to allow microphone access. 
+                      Please tap <strong>"Allow"</strong> to enable voice input for the AI interview.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {microphonePermission === 'denied' && (
+              <div className="mb-6 glass rounded-2xl p-5 border border-red-500/40 bg-gradient-to-r from-red-500/10 to-red-600/10 backdrop-blur-sm">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-red-300 text-sm font-semibold mb-2">Microphone Permission Denied</p>
+                    <p className="text-red-200 text-sm mb-3">
+                      {isIOS() ? (
+                        <>
+                          To use voice input, please enable microphone access:
+                          <ol className="list-decimal list-inside mt-2 space-y-1 text-xs">
+                            <li>Go to <strong>Settings</strong> → <strong>Safari</strong> → <strong>Microphone</strong></li>
+                            <li>Select <strong>Allow</strong> or ensure this website is set to <strong>Ask</strong></li>
+                            <li>Refresh this page and try again</li>
+                          </ol>
+                        </>
+                      ) : (
+                        'Please enable microphone access in your browser settings to use voice input.'
+                      )}
+                    </p>
+                    <button
+                      onClick={async () => {
+                        const recognition = speechRecognitionRef.current;
+                        if (recognition) {
+                          try {
+                            setMicrophonePermission('checking');
+                            const granted = await recognition.requestMicrophonePermission();
+                            // Sync the permission status
+                            recognition.setMicrophonePermissionGranted(granted);
+                            setMicrophonePermission(granted ? 'granted' : 'denied');
+                          } catch (error) {
+                            console.error('Error requesting permission:', error);
+                            setMicrophonePermission('denied');
+                            recognition.setMicrophonePermissionGranted(false);
+                          }
+                        } else if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                          try {
+                            setMicrophonePermission('checking');
+                            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                            stream.getTracks().forEach(track => track.stop());
+                            setMicrophonePermission('granted');
+                            // Try to sync with recognition if it exists now
+                            const recognitionAfter = speechRecognitionRef.current;
+                            if (recognitionAfter) {
+                              recognitionAfter.setMicrophonePermissionGranted(true);
+                            }
+                          } catch (error) {
+                            setMicrophonePermission('denied');
+                            const recognitionAfter = speechRecognitionRef.current;
+                            if (recognitionAfter) {
+                              recognitionAfter.setMicrophonePermissionGranted(false);
+                            }
+                          }
+                        }
+                      }}
+                      className="text-xs px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-lg border border-red-500/40 transition-colors"
+                    >
+                      Request Permission
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {microphonePermission === 'granted' && (
+              <div className="mb-6 glass rounded-2xl p-4 border border-green-500/40 bg-gradient-to-r from-green-500/10 to-green-600/10 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-green-300 text-sm font-medium">
+                    Microphone permission granted. You're ready to start!
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-4 mb-8 text-left max-w-2xl mx-auto">
               <div className="glass rounded-2xl p-6 border border-primary-500/20">
@@ -974,75 +1161,52 @@ export default function InterviewPage() {
 
             <button
               onClick={startInterview}
-              className="group relative w-full py-5 px-8 bg-gradient-to-r from-primary-600 via-primary-500 to-primary-600 text-white rounded-2xl font-bold text-lg hover:from-primary-500 hover:via-primary-400 hover:to-primary-500 transition-all duration-300 shadow-2xl shadow-primary-500/40 hover:shadow-primary-500/60 active:scale-[0.98] transform overflow-hidden"
+              disabled={microphonePermission === 'denied' && voiceInputMode}
+              className={`group relative w-full py-5 px-8 bg-gradient-to-r from-primary-600 via-primary-500 to-primary-600 text-white rounded-2xl font-bold text-lg hover:from-primary-500 hover:via-primary-400 hover:to-primary-500 transition-all duration-300 shadow-2xl shadow-primary-500/40 hover:shadow-primary-500/60 active:scale-[0.98] transform overflow-hidden ${
+                microphonePermission === 'denied' && voiceInputMode
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
+              }`}
             >
               <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <span className="relative flex items-center justify-center gap-3">
                 <FiMic className="w-6 h-6" />
-              Start Interview
+                {isIOS() && microphonePermission === 'prompt' && voiceInputMode
+                  ? 'Enable Microphone & Start Interview'
+                  : 'Start Interview'}
                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </span>
             </button>
+            {microphonePermission === 'denied' && voiceInputMode && (
+              <p className="text-center text-sm text-gray-400 mt-2">
+                Switch to text mode or grant microphone permission to start
+              </p>
+            )}
+            {isIOS() && microphonePermission === 'prompt' && voiceInputMode && (
+              <p className="text-center text-sm text-blue-300 mt-2">
+                You'll be prompted to allow microphone access when you click above
+              </p>
+            )}
           </div>
         ) : (
           /* Interview Session */
           <div className="space-y-6">
-            {/* Video Feed */}
-            {isVideoEnabled && (
-              <div className="glass-dark rounded-3xl shadow-2xl overflow-hidden border border-white/10 relative mb-8">
-                {videoError ? (
-                  <div className="w-full h-[450px] flex items-center justify-center bg-gradient-to-br from-gray-900/50 to-gray-800/50">
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/30">
-                        <FiVideoOff className="text-3xl text-red-400" />
-                      </div>
-                      <p className="text-gray-300 text-base font-medium mb-1">{videoError}</p>
-                      <p className="text-gray-500 text-sm">Interview will continue without video</p>
-                    </div>
-                  </div>
-                ) : (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-auto max-h-[450px] object-cover bg-gray-900"
-                  />
-                )}
-                {isRecording && !videoError && (
-                  <div className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-black/70 backdrop-blur-md rounded-xl border border-red-500/30 shadow-xl">
-                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50"></div>
-                    <span className="text-white text-sm font-bold">{formatTime(recordingTime)}</span>
-                  </div>
-                )}
-                <div className="absolute bottom-6 right-6 flex gap-3">
-                  <button
-                    onClick={toggleVideo}
-                    className={`p-4 rounded-2xl backdrop-blur-md transition-all shadow-lg ${
-                      isVideoEnabled 
-                        ? 'bg-gray-800/90 text-white hover:bg-gray-700/90 border border-gray-600/50' 
-                        : 'bg-red-500/90 text-white hover:bg-red-600 border border-red-400/50'
-                    }`}
-                    title={isVideoEnabled ? "Turn off video" : "Turn on video"}
-                  >
-                    {isVideoEnabled ? <FiVideo className="text-xl" /> : <FiVideoOff className="text-xl" />}
-                  </button>
-                  <button
-                    onClick={toggleAudio}
-                    className={`p-4 rounded-2xl backdrop-blur-md transition-all shadow-lg ${
-                      isAudioEnabled 
-                        ? 'bg-gray-800/90 text-white hover:bg-gray-700/90 border border-gray-600/50' 
-                        : 'bg-red-500/90 text-white hover:bg-red-600 border border-red-400/50'
-                    }`}
-                    title={isAudioEnabled ? "Mute AI voice" : "Unmute AI voice"}
-                  >
-                    {isAudioEnabled ? <FiVolume2 className="text-xl" /> : <FiVolumeX className="text-xl" />}
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Audio Control */}
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={toggleAudio}
+                className={`p-3 rounded-xl backdrop-blur-md transition-all shadow-lg ${
+                  isAudioEnabled 
+                    ? 'bg-gray-800/90 text-white hover:bg-gray-700/90 border border-gray-600/50' 
+                    : 'bg-red-500/90 text-white hover:bg-red-600 border border-red-400/50'
+                }`}
+                title={isAudioEnabled ? "Mute AI voice" : "Unmute AI voice"}
+              >
+                {isAudioEnabled ? <FiVolume2 className="text-xl" /> : <FiVolumeX className="text-xl" />}
+              </button>
+            </div>
 
             {/* Messages Chat Container */}
             <div 
@@ -1183,9 +1347,17 @@ export default function InterviewPage() {
                   )}
                   <div className="flex items-center gap-4">
                     <button
-                      onClick={toggleVoiceInput}
+                      type="button"
+                      onClick={(e) => toggleVoiceInput(e)}
+                      onTouchStart={async (e) => {
+                        // For mobile, also handle touch events
+                        e.preventDefault();
+                        if (!isListening && !isAISpeaking && !isLoading) {
+                          await toggleVoiceInput(e);
+                        }
+                      }}
                       disabled={isAISpeaking || isLoading}
-                      className={`flex-1 flex items-center justify-center gap-3 px-8 py-6 rounded-2xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transform active:scale-[0.98] ${
+                      className={`flex-1 flex items-center justify-center gap-3 px-8 py-6 rounded-2xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transform active:scale-[0.98] touch-manipulation ${
                         isListening
                           ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white ring-4 ring-red-500/30 animate-pulse"
                           : "bg-gradient-to-r from-primary-600 via-primary-500 to-primary-600 hover:from-primary-500 hover:via-primary-400 hover:to-primary-500 text-white hover:shadow-primary-500/50"
@@ -1217,6 +1389,16 @@ export default function InterviewPage() {
                         {typeof window !== 'undefined' && !/iPad|iPhone|iPod|Android/.test(navigator.userAgent) && (
                           <span className="block mt-1">Please use text mode or try Chrome, Edge, or Safari.</span>
                         )}
+                      </p>
+                    </div>
+                  )}
+                  {speechRecognitionRef.current?.isSupported() && isIOS() && !isListening && !isAISpeaking && (
+                    <div className="flex items-center gap-2 px-4 py-3 bg-blue-500/20 border border-blue-500/40 rounded-xl">
+                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-blue-300 text-sm font-medium">
+                        <span className="font-semibold">iOS Tip:</span> Click the microphone button above to start voice input. Voice input must be started manually on iOS devices.
                       </p>
                     </div>
                   )}
