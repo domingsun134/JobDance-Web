@@ -14,7 +14,12 @@ export async function POST(request: NextRequest) {
 
     const audioBuffer = await synthesizeSpeech(text, voiceId || 'Ruth');
 
-    return new NextResponse(audioBuffer, {
+    // Convert Buffer to Uint8Array for NextResponse
+    // NextResponse accepts Uint8Array, ArrayBuffer, or ReadableStream
+    // Using Uint8Array is the most compatible approach
+    const uint8Array = new Uint8Array(audioBuffer);
+
+    return new NextResponse(uint8Array, {
       status: 200,
       headers: {
         'Content-Type': 'audio/mpeg',

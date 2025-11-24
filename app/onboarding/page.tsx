@@ -17,7 +17,7 @@ export default function OnboardingPage() {
   const [currentSkill, setCurrentSkill] = useState("");
   const [languages, setLanguages] = useState<Language[]>([]);
   const [availability, setAvailability] = useState({ startDate: "", duration: "" });
-  const [expectedSalary, setExpectedSalary] = useState({ amount: "", currency: "USD", period: "monthly" as const });
+  const [expectedSalary, setExpectedSalary] = useState<{ amount: string; currency: string; period: "hourly" | "daily" | "weekly" | "monthly" | "yearly" }>({ amount: "", currency: "USD", period: "monthly" });
 
   // Load existing profile data
   useEffect(() => {

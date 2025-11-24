@@ -67,7 +67,7 @@ export async function getServerSupabaseClient() {
       autoRefreshToken: false, // Don't auto-refresh in server context
       detectSessionInUrl: false, // Don't detect session in URL for API routes
     },
-  });
+  } as any); // Type assertion to bypass TypeScript check for cookies option
   
   return supabase;
 }

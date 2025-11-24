@@ -50,6 +50,7 @@ export default function InterviewPage() {
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const initialQuestionReceivedRef = useRef<boolean>(false);
 
   useEffect(() => {
     async function loadUser() {
@@ -103,6 +104,36 @@ export default function InterviewPage() {
   const startInterview = async () => {
     setIsInterviewing(true);
     setIsLoading(true);
+    initialQuestionReceivedRef.current = false; // Reset flag
+    
+    // Safety timeout: If we're still loading after 35 seconds, show fallback question
+    // This prevents the UI from being stuck on "AI is thinking" indefinitely
+    const safetyTimeout = setTimeout(() => {
+      if (!initialQuestionReceivedRef.current) {
+        console.warn('Safety timeout triggered - showing fallback question (likely network issue on mobile)');
+        initialQuestionReceivedRef.current = true; // Mark as handled
+        const fallbackQuestion = "Tell me about yourself.";
+        setCurrentQuestion(fallbackQuestion);
+        setMessages([{ role: "assistant", content: fallbackQuestion }]);
+        setQuestionCount(1);
+        setIsLoading(false);
+        
+        // Speak the fallback question
+        if (isAudioEnabled && speechSynthesisRef.current) {
+          setIsAISpeaking(true);
+          speechSynthesisRef.current.speak(fallbackQuestion, () => {
+            setIsAISpeaking(false);
+            if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+              startVoiceInput();
+            }
+          });
+        } else {
+          if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+            setTimeout(() => startVoiceInput(), 500);
+          }
+        }
+      }
+    }, 35000); // 35 seconds safety timeout
     
     // Resume audio context on user interaction (required for autoplay)
     if (speechSynthesisRef.current) {
@@ -140,8 +171,19 @@ export default function InterviewPage() {
     // Generate initial interview question using AI based on user profile
     try {
       // Get session token to pass to API
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      let token: string | null = null;
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.warn('Error getting session for initial question:', sessionError.message);
+        }
+        token = session?.access_token || null;
+        if (!token) {
+          console.warn('No session token available for initial question');
+        }
+      } catch (tokenError: any) {
+        console.error('Error retrieving session token:', tokenError);
+      }
       
       // Create a system message for the first question
       const initialMessages = [{
@@ -153,51 +195,117 @@ export default function InterviewPage() {
           : "I'm ready to start the interview."
       }];
 
-      // Call AWS Bedrock API for initial AI question
-      const response = await fetch('/api/ai/respond', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        credentials: 'include',
-        body: JSON.stringify({ messages: initialMessages }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get initial AI question');
-      }
-
-      const data = await response.json();
-      const initialQuestion = data.response || "Tell me about yourself.";
-
-    setCurrentQuestion(initialQuestion);
-    setMessages([{ role: "assistant", content: initialQuestion }]);
-      setQuestionCount(1); // First question
-      setIsLoading(false);
-
-      // Speak the initial question using AWS Polly
-      if (isAudioEnabled && speechSynthesisRef.current) {
-        setIsAISpeaking(true);
-        await speechSynthesisRef.current.speak(initialQuestion, () => {
-          setIsAISpeaking(false);
-          // Auto-start listening after AI finishes speaking (if voice mode is enabled)
-          if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
-            startVoiceInput();
-          }
+      console.log('Fetching initial AI question...');
+      
+      // Create AbortController for timeout (important for mobile)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      try {
+        // Call AWS Bedrock API for initial AI question
+        const response = await fetch('/api/ai/respond', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` }),
+          },
+          credentials: 'include',
+          body: JSON.stringify({ messages: initialMessages }),
+          signal: controller.signal,
         });
-      } else {
-        // If audio is disabled, still auto-start listening in voice mode
-        if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
-          setTimeout(() => startVoiceInput(), 500);
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('API response error:', response.status, errorText);
+          throw new Error(`Failed to get initial AI question: ${response.status} ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('Received AI response:', data);
+        const initialQuestion = data.response || "Tell me about yourself.";
+        
+        if (!initialQuestion || initialQuestion.trim() === '') {
+          throw new Error('Empty response from AI');
+        }
+
+        clearTimeout(safetyTimeout); // Clear safety timeout since we got a response
+        initialQuestionReceivedRef.current = true; // Mark as received
+        setCurrentQuestion(initialQuestion);
+        setMessages([{ role: "assistant", content: initialQuestion }]);
+        setQuestionCount(1); // First question
+        setIsLoading(false);
+
+        // Speak the initial question using AWS Polly
+        if (isAudioEnabled && speechSynthesisRef.current) {
+          setIsAISpeaking(true);
+          await speechSynthesisRef.current.speak(initialQuestion, () => {
+            setIsAISpeaking(false);
+            // Auto-start listening after AI finishes speaking (if voice mode is enabled)
+            if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+              startVoiceInput();
+            }
+          });
+        } else {
+          // If audio is disabled, still auto-start listening in voice mode
+          if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+            setTimeout(() => startVoiceInput(), 500);
+          }
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        console.error('Error fetching initial AI question:', fetchError);
+        
+        // Check if it's a timeout or abort error
+        if (fetchError.name === 'AbortError' || fetchError.message?.includes('timeout')) {
+          console.error('Request timed out - this may be a network issue on mobile');
+          // Don't show alert on mobile as it might be annoying, just use fallback
+          if (typeof window !== 'undefined' && !/iPad|iPhone|iPod|Android/.test(navigator.userAgent)) {
+            alert('The request timed out. Please check your internet connection and try again.');
+          }
+        } else {
+          console.error('Fetch error details:', {
+            name: fetchError.name,
+            message: fetchError.message,
+            stack: fetchError.stack
+          });
+        }
+        
+        clearTimeout(safetyTimeout); // Clear safety timeout since we're handling the error
+        initialQuestionReceivedRef.current = true; // Mark as handled
+        // Always show fallback question, even on error
+        const fallbackQuestion = "Tell me about yourself.";
+        setCurrentQuestion(fallbackQuestion);
+        setMessages([{ role: "assistant", content: fallbackQuestion }]);
+        setQuestionCount(1);
+        setIsLoading(false);
+        
+        // Speak the fallback question
+        if (isAudioEnabled && speechSynthesisRef.current) {
+          setIsAISpeaking(true);
+          await speechSynthesisRef.current.speak(fallbackQuestion, () => {
+            setIsAISpeaking(false);
+            if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+              startVoiceInput();
+            }
+          });
+        } else {
+          // If audio disabled, still auto-start listening in voice mode
+          if (voiceInputMode && speechRecognitionRef.current?.isSupported()) {
+            setTimeout(() => startVoiceInput(), 500);
+          }
         }
       }
     } catch (error: any) {
-      console.error('Error getting initial AI question:', error);
+      clearTimeout(safetyTimeout); // Clear safety timeout since we're handling the error
+      initialQuestionReceivedRef.current = true; // Mark as handled
+      console.error('Error getting initial AI question (outer catch):', error);
       // Fallback to simple question
       const fallbackQuestion = "Tell me about yourself.";
       setCurrentQuestion(fallbackQuestion);
       setMessages([{ role: "assistant", content: fallbackQuestion }]);
+      setQuestionCount(1);
       setIsLoading(false);
 
       // Speak the fallback question
@@ -410,6 +518,13 @@ export default function InterviewPage() {
   const startVoiceInput = () => {
     if (!speechRecognitionRef.current || isListening || isAISpeaking) return;
 
+    // Check if speech recognition is supported
+    if (!speechRecognitionRef.current.isSupported()) {
+      console.warn('Speech recognition not supported, switching to text mode');
+      setVoiceInputMode(false);
+      return;
+    }
+
     setIsListening(true);
     setInterimTranscript("");
 
@@ -421,13 +536,29 @@ export default function InterviewPage() {
         } else {
           // When we get a final result, submit it
           setInterimTranscript("");
-          submitAnswer(text);
+          if (text.trim()) {
+            submitAnswer(text);
+          } else {
+            // If no text, just stop listening and wait for next input
+            setIsListening(false);
+          }
         }
       },
       (error: string) => {
         console.error('Speech recognition error:', error);
         setIsListening(false);
         setInterimTranscript("");
+        
+        // For iOS, some errors are expected and we should allow retry
+        if (error.includes('no-speech') || error.includes('audio-capture')) {
+          // These are common on mobile, just stop listening
+          return;
+        }
+        
+        // For other errors, show a message but don't switch modes automatically
+        if (error.includes('not-allowed') || error.includes('permission')) {
+          alert('Microphone permission is required for voice input. Please enable it in your browser settings.');
+        }
       }
     );
   };
@@ -1078,7 +1209,15 @@ export default function InterviewPage() {
                       <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
-                      <p className="text-yellow-300 text-sm font-medium">Voice input not supported in this browser. Please use text mode.</p>
+                      <p className="text-yellow-300 text-sm font-medium">
+                        Voice input may not be supported in this browser. 
+                        {typeof window !== 'undefined' && /iPad|iPhone|iPod|Android/.test(navigator.userAgent) && (
+                          <span className="block mt-1">On mobile, please ensure you're using Safari (iOS) or Chrome (Android) and have granted microphone permissions in your browser settings.</span>
+                        )}
+                        {typeof window !== 'undefined' && !/iPad|iPhone|iPod|Android/.test(navigator.userAgent) && (
+                          <span className="block mt-1">Please use text mode or try Chrome, Edge, or Safari.</span>
+                        )}
+                      </p>
                     </div>
                   )}
                 </div>

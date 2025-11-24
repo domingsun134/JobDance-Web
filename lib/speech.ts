@@ -2,7 +2,7 @@
 export class SpeechSynthesis {
   private audioContext: AudioContext | null = null;
   private currentAudio: HTMLAudioElement | null = null;
-  private synth: SpeechSynthesis | null = null;
+  private synth: any = null; // Browser SpeechSynthesis API
   private isSpeaking: boolean = false;
   private useBrowserTTS: boolean = false;
 
@@ -12,7 +12,7 @@ export class SpeechSynthesis {
         this.audioContext = new AudioContext();
       }
       if ('speechSynthesis' in window) {
-        this.synth = window.speechSynthesis;
+        this.synth = (window as any).speechSynthesis;
       }
     }
   }
@@ -136,7 +136,7 @@ export class SpeechSynthesis {
     // Cancel any ongoing speech
     this.synth.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    const utterance = new (window as any).SpeechSynthesisUtterance(text);
     utterance.rate = 0.9;
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
@@ -147,7 +147,7 @@ export class SpeechSynthesis {
       if (onEnd) onEnd();
     };
 
-    utterance.onerror = (error) => {
+    utterance.onerror = (error: any) => {
       console.error('Browser TTS error:', error);
       this.isSpeaking = false;
       if (onEnd) onEnd();

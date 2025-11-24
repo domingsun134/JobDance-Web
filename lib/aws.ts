@@ -155,7 +155,7 @@ export async function synthesizeSpeech(text: string, voiceId: string = 'Ruth'): 
     const command = new SynthesizeSpeechCommand({
       Text: text,
       OutputFormat: 'mp3',
-      VoiceId: voiceId,
+      VoiceId: voiceId as any, // Type assertion for VoiceId
       Engine: 'neural', // Use neural engine for more natural, human-like speech with better intonation
     });
     return await client.send(command);
