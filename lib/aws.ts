@@ -268,6 +268,9 @@ export async function getAIResponse(
     .map(m => m.content)
     .slice(-5); // Last 5 questions
 
+  // Check if this is the first question (no assistant messages yet)
+  const isFirstQuestion = previousQuestions.length === 0;
+
   // Build context from user profile
   let systemPrompt = '';
   
@@ -287,8 +290,23 @@ Example: "Thank you so much for taking the time to participate in this interview
 
 Do NOT ask any more questions. This is the closing statement only.`;
   } else {
-    systemPrompt = `You are a professional, friendly, and engaging interview coach conducting a job interview. Your goal is to have a natural, conversational interview that helps the candidate practice their interview skills.
+    // Add special instruction for first question
+    const firstQuestionInstruction = isFirstQuestion 
+      ? `\n\n🚨 CRITICAL - THIS IS THE FIRST QUESTION OF THE INTERVIEW:
+- You MUST start with a warm, friendly greeting (e.g., "Hello!", "Hi there!", "Nice to meet you!", "Welcome!")
+- DO NOT start with "Great to hear", "That's interesting", or any acknowledgment phrases - this is the opening greeting, not a response to something
+- After the greeting, briefly introduce yourself as the interview coach (optional, keep it short)
+- Then immediately transition into your first interview question
+- The greeting should be natural and welcoming, followed by the first question
+- Example good openings:
+  * "Hello! Welcome to your practice interview. Let's start with a question about yourself - can you tell me about your background?"
+  * "Hi there! Thanks for joining. I'd like to begin by asking you to tell me a bit about yourself and your experience."
+  * "Nice to meet you! Let's get started. Can you walk me through your professional background?"
+- Keep the entire response concise (2-3 sentences total: greeting + first question)\n`
+      : '';
 
+    systemPrompt = `You are a professional, friendly, and engaging interview coach conducting a job interview. Your goal is to have a natural, conversational interview that helps the candidate practice their interview skills.
+${firstQuestionInstruction}
 CRITICAL INSTRUCTIONS - FOLLOW THESE STRICTLY:
 1. ALWAYS acknowledge what the candidate ACTUALLY said - if they say they DON'T have experience, acknowledge that
 2. NEVER contradict what the candidate just said (e.g., don't say "that's interesting" if they said they have no experience)

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Your Email - JobDance.ai</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a; color: #e2e8f0;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #0f172a; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: #1e293b; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);">
+                    <!-- Header with gradient background -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px 30px; text-align: center;">
+                            <h1 style="margin: 0 0 20px 0; font-size: 28px; font-weight: 700; color: #ffffff; text-align: center;">
+                                Welcome to JobDance.ai
+                            </h1>
+                            <p style="margin: 0; font-size: 16px; color: #94a3b8; line-height: 1.5;">
+                                Your AI-powered interview practice platform
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Main Content -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <p style="margin: 0 0 20px 0; font-size: 16px; color: #e2e8f0; line-height: 1.6;">
+                                Hello,
+                            </p>
+                            <p style="margin: 0 0 20px 0; font-size: 16px; color: #e2e8f0; line-height: 1.6;">
+                                Thank you for signing up for JobDance.ai! We're excited to help you improve your interview skills with our AI-powered practice platform.
+                            </p>
+                            <p style="margin: 0 0 30px 0; font-size: 16px; color: #e2e8f0; line-height: 1.6;">
+                                To get started, please confirm your email address by clicking the button below:
+                            </p>
+                            
+                            <!-- Confirmation Button -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td align="center" style="padding: 20px 0;">
+                                        <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 14px 32px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);">
+                                            Confirm Email Address
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style="margin: 30px 0 20px 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                                If the button doesn't work, you can copy and paste this link into your browser:
+                            </p>
+                            <p style="margin: 0 0 30px 0; font-size: 12px; color: #64748b; word-break: break-all; line-height: 1.6; background-color: #0f172a; padding: 12px; border-radius: 8px;">
+                                {{ .ConfirmationURL }}
+                            </p>
+                            
+                            <p style="margin: 0 0 10px 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                                This link will expire in 24 hours for security reasons.
+                            </p>
+                            <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                                If you didn't create an account with JobDance.ai, you can safely ignore this email.
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px; background-color: #0f172a; border-top: 1px solid #1e293b;">
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b; text-align: center; line-height: 1.6;">
+                                Need help? Contact us through the app or visit our support page.
+                            </p>
+                            <p style="margin: 0 0 10px 0; font-size: 12px; color: #475569; text-align: center; line-height: 1.6;">
+                                <a href="{{ .SiteURL }}/terms" style="color: #60a5fa; text-decoration: none;">Terms of Service</a> | 
+                                <a href="{{ .SiteURL }}/privacy" style="color: #60a5fa; text-decoration: none;">Privacy Policy</a>
+                            </p>
+                            <p style="margin: 0; font-size: 11px; color: #475569; text-align: center; line-height: 1.6;">
+                                © 2024 ClanMe Pte Ltd. All rights reserved.<br>
+                                JobDance.ai is a product of ClanMe Pte Ltd.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+

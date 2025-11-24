@@ -1,0 +1,24 @@
+Welcome to JobDance.ai
+
+Hello,
+
+Thank you for signing up for JobDance.ai! We're excited to help you improve your interview skills with our AI-powered practice platform.
+
+To get started, please confirm your email address by clicking the link below:
+
+{{ .ConfirmationURL }}
+
+This link will expire in 24 hours for security reasons.
+
+If you didn't create an account with JobDance.ai, you can safely ignore this email.
+
+---
+
+Need help? Contact us through the app or visit our support page.
+
+Terms of Service: {{ .SiteURL }}/terms
+Privacy Policy: {{ .SiteURL }}/privacy
+
+© 2024 ClanMe Pte Ltd. All rights reserved.
+JobDance.ai is a product of ClanMe Pte Ltd.
+

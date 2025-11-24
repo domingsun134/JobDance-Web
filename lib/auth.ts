@@ -72,30 +72,55 @@ export async function registerUser(email: string, password: string): Promise<Use
 
   // User profile is automatically created by database trigger
   // Wait a moment for the trigger to execute, then verify profile exists
-  await new Promise(resolve => setTimeout(resolve, 500));
+  // Retry a few times in case the trigger takes longer
+  let profile = null;
+  let profileError = null;
+  const maxRetries = 3;
   
-  // Verify profile was created (trigger should handle this)
-  const { data: profile, error: profileError } = await supabase
-    .from('user_profiles')
-    .select('onboarding_completed')
-    .eq('id', authData.user.id)
-    .single();
-
-  // If profile doesn't exist, try to create it manually (fallback)
-  if (profileError && profileError.code === 'PGRST116') {
-    const { error: insertError } = await supabase
+  for (let i = 0; i < maxRetries; i++) {
+    await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
+    
+    const { data, error } = await supabase
       .from('user_profiles')
-      .insert({
-        id: authData.user.id,
-        email: email,
-        onboarding_completed: false,
-      });
-
-    if (insertError) {
-      throw new Error(insertError.message || "Failed to create user profile");
+      .select('onboarding_completed')
+      .eq('id', authData.user.id)
+      .single();
+    
+    if (data && !error) {
+      profile = data;
+      break;
     }
-  } else if (profileError) {
-    throw new Error(profileError.message || "Failed to verify user profile");
+    
+    profileError = error;
+    
+    // If it's not a "not found" error, break early
+    if (error && error.code !== 'PGRST116') {
+      break;
+    }
+  }
+
+  // If profile doesn't exist after retries, try to create it manually (fallback)
+  if (!profile && profileError) {
+    if (profileError.code === 'PGRST116') {
+      // Profile doesn't exist, try to create it
+      const { error: insertError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: authData.user.id,
+          email: email,
+          onboarding_completed: false,
+        });
+
+      if (insertError) {
+        // If insert fails due to RLS, the trigger will create it eventually
+        // Log the error but don't block registration - user can proceed
+        console.warn('Profile creation failed, but user account is created:', insertError.message);
+        // Don't throw - allow user to proceed, profile will be created by trigger or on next login
+      }
+    } else {
+      // Other error - log but don't block
+      console.warn('Profile verification error:', profileError.message);
+    }
   }
 
   return {
