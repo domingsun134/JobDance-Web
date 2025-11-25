@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerUser } from "@/lib/auth";
@@ -14,10 +14,12 @@ export default function RegisterPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
 
     if (!acceptedTerms) {
       setError("You must accept the Terms of Service and Privacy Policy to continue");
@@ -38,13 +40,23 @@ export default function RegisterPage() {
 
     try {
       await registerUser(email, password);
-      router.push("/onboarding");
+      setSuccessMessage("Account created! Please confirm your email before signing in.");
     } catch (err: any) {
       setError(err.message || "Registration failed");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!successMessage) return;
+
+    const timeout = setTimeout(() => {
+      router.push("/auth/login");
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [router, successMessage]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-4 sm:py-8 bg-gray-900">
@@ -67,6 +79,13 @@ export default function RegisterPage() {
           {error && (
             <div className="mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-red-300 text-sm animate-fade-in">
               {error}
+            </div>
+          )}
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-4 p-3 bg-green-900/30 border border-green-500/50 rounded-lg text-green-300 text-sm animate-fade-in">
+              {successMessage}
             </div>
           )}
 
@@ -126,7 +145,7 @@ export default function RegisterPage() {
 
               <button
                 type="submit"
-                disabled={loading || !acceptedTerms}
+                disabled={loading || !acceptedTerms || Boolean(successMessage)}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 active:scale-95"
               >
                 {loading ? "Creating account..." : "Create Account"}
