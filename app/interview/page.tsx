@@ -43,6 +43,8 @@ export default function InterviewPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const initialQuestionReceivedRef = useRef<boolean>(false);
+  const messagesRef = useRef<Message[]>([]);
+  const questionCountRef = useRef<number>(0);
 
   useEffect(() => {
     async function loadUser() {
@@ -135,6 +137,15 @@ export default function InterviewPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Sync refs with state to always have latest values
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    questionCountRef.current = questionCount;
+  }, [questionCount]);
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -143,7 +154,70 @@ export default function InterviewPage() {
   }, [messages, isLoading, currentQuestion]);
 
   const startInterview = async () => {
-    // Attempt to unlock audio playback immediately while we still have a user gesture context.
+    // CRITICAL FOR iOS: Request microphone permission FIRST, before ANY other async operations
+    // iOS Safari requires getUserMedia to be called directly in the user interaction handler
+    // Any delay or async operation before it will break the permission prompt
+    const isIOSDevice = typeof window !== 'undefined' && 
+      (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+    // For iOS, request permission immediately if needed
+    if (isIOSDevice && voiceInputMode && microphonePermission !== 'granted') {
+      // Minimal checks - only the absolute essentials
+      if (!navigator.mediaDevices?.getUserMedia) {
+        alert('Microphone access is not available in this browser.');
+        return;
+      }
+
+      try {
+        console.log('🎤 Requesting microphone permission on iOS (immediate call)...');
+        setMicrophonePermission('checking');
+        
+        // CRITICAL: Call getUserMedia IMMEDIATELY - no await, no delay, no other operations
+        // This MUST be the first async operation to preserve user interaction context on iOS
+        const permissionPromise = navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        });
+        
+        // Await the promise
+        const stream = await permissionPromise;
+        
+        // Stop the stream immediately - we just needed permission
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Update permission status
+        setMicrophonePermission('granted');
+        if (speechRecognitionRef.current) {
+          speechRecognitionRef.current.setMicrophonePermissionGranted(true);
+        }
+        
+        console.log('✅ Microphone permission granted on iOS');
+      } catch (error: any) {
+        console.error('❌ Microphone permission error:', error);
+        setMicrophonePermission('denied');
+        if (speechRecognitionRef.current) {
+          speechRecognitionRef.current.setMicrophonePermissionGranted(false);
+        }
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          alert('Microphone permission was denied.\n\nTo enable:\n1. Tap the "AA" icon in Safari address bar\n2. Select "Website Settings"\n3. Set Microphone to "Allow"\n4. Refresh the page\n\nOr go to Settings > Safari > Microphone and allow access for this website.');
+          return;
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+          alert('No microphone found. Please connect a microphone and try again.');
+          return;
+        } else {
+          alert(`Microphone permission error: ${error.message || error.name}\n\nPlease ensure you allow microphone access when prompted.`);
+          return;
+        }
+      }
+    }
+
+    // Now proceed with other operations after permission is granted
+    // Attempt to unlock audio playback
     if (speechSynthesisRef.current) {
       try {
         await speechSynthesisRef.current.unlockAudio();
@@ -152,83 +226,19 @@ export default function InterviewPage() {
       }
     }
 
-    // For iOS, request microphone permission first (requires user interaction)
-    // IMPORTANT: This must be called directly in the click handler to preserve user interaction context
-    const isIOSDevice = typeof window !== 'undefined' && 
-      (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
-       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
-
-    if (isIOSDevice && voiceInputMode) {
-      // Check if we need to request permission
-      // Request microphone permission directly using getUserMedia
-      // This must happen synchronously in the click handler to trigger iOS prompt
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('Microphone access is not available in this browser.');
-        return;
-      }
-
-      // Check if we're on HTTPS (required for iOS)
-      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-        alert('Microphone access requires HTTPS. Please access this site over HTTPS.');
-        return;
-      }
-
-      // Request permission if not already granted
-      // On iOS with "Ask" setting, we need to request every time until granted
-      if (microphonePermission !== 'granted') {
-        try {
-          console.log('🎤 Requesting microphone permission on iOS...');
-          setMicrophonePermission('checking');
-          
-          // Call getUserMedia directly - this will trigger iOS permission prompt
-          // This MUST be called within the user interaction handler (button click)
-          // The await preserves the user interaction context
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true
-            } 
-          });
-          
-          // Stop the stream immediately - we just needed permission
-          stream.getTracks().forEach(track => track.stop());
-          
-          // Update permission status
-          setMicrophonePermission('granted');
-          if (speechRecognitionRef.current) {
-            speechRecognitionRef.current.setMicrophonePermissionGranted(true);
-          }
-          
-          console.log('✅ Microphone permission granted on iOS');
-        } catch (error: any) {
-          console.error('❌ Microphone permission error:', error);
-          console.error('Error details:', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
-          });
-          
-          setMicrophonePermission('denied');
-          if (speechRecognitionRef.current) {
-            speechRecognitionRef.current.setMicrophonePermissionGranted(false);
-          }
-          
-          if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-            alert('Microphone permission was denied. Please:\n1. Go to Settings > Safari > Microphone\n2. Allow access for this website\n3. Refresh the page and try again');
-          } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-            alert('No microphone found. Please connect a microphone and try again.');
-          } else {
-            alert(`Microphone permission error: ${error.message || error.name}. Please ensure you allow microphone access when prompted.`);
-          }
-          return;
-        }
-      }
-    }
-
     setIsInterviewing(true);
     setIsLoading(true);
     initialQuestionReceivedRef.current = false; // Reset flag
+    
+    // Create initial user message for the first question (needed for conversation history)
+    const initialMessages = [{
+      role: "user" as const,
+      content: profile?.workExperience && profile.workExperience.length > 0
+        ? `I'm ready to start the interview. I have experience as ${profile.workExperience[0].position} at ${profile.workExperience[0].company}.`
+        : profile?.education && profile.education.length > 0
+        ? `I'm ready to start the interview. I studied ${profile.education[0].field} at ${profile.education[0].institution}.`
+        : "I'm ready to start the interview."
+    }];
     
     // Safety timeout: If we're still loading after 35 seconds, show fallback question
     // This prevents the UI from being stuck on "AI is thinking" indefinitely
@@ -238,7 +248,11 @@ export default function InterviewPage() {
         initialQuestionReceivedRef.current = true; // Mark as handled
         const fallbackQuestion = "Tell me about yourself.";
         setCurrentQuestion(fallbackQuestion);
-        setMessages([{ role: "assistant", content: fallbackQuestion }]);
+        // Include the initial user message in the messages state to maintain conversation history
+        setMessages([
+          ...initialMessages,
+          { role: "assistant", content: fallbackQuestion }
+        ]);
         setQuestionCount(1);
         setIsLoading(false);
         
@@ -279,16 +293,6 @@ export default function InterviewPage() {
         } catch (tokenError: any) {
           console.error('Error retrieving session token:', tokenError);
         }
-        
-        // Create a system message for the first question
-        const initialMessages = [{
-          role: "user" as const,
-          content: profile?.workExperience && profile.workExperience.length > 0
-            ? `I'm ready to start the interview. I have experience as ${profile.workExperience[0].position} at ${profile.workExperience[0].company}.`
-            : profile?.education && profile.education.length > 0
-            ? `I'm ready to start the interview. I studied ${profile.education[0].field} at ${profile.education[0].institution}.`
-            : "I'm ready to start the interview."
-        }];
 
         console.log('Fetching initial AI question...');
         
@@ -334,7 +338,11 @@ export default function InterviewPage() {
           clearTimeout(safetyTimeout); // Clear safety timeout since we got a response
           initialQuestionReceivedRef.current = true; // Mark as received
           setCurrentQuestion(initialQuestion);
-          setMessages([{ role: "assistant", content: initialQuestion }]);
+          // Include the initial user message in the messages state to maintain conversation history
+          setMessages([
+            ...initialMessages,
+            { role: "assistant", content: initialQuestion }
+          ]);
           setQuestionCount(1); // First question
           setIsLoading(false);
 
@@ -383,7 +391,11 @@ export default function InterviewPage() {
           // Always show fallback question, even on error
           const fallbackQuestion = "Tell me about yourself.";
           setCurrentQuestion(fallbackQuestion);
-          setMessages([{ role: "assistant", content: fallbackQuestion }]);
+          // Include the initial user message in the messages state to maintain conversation history
+          setMessages([
+            ...initialMessages,
+            { role: "assistant", content: fallbackQuestion }
+          ]);
           setQuestionCount(1);
           setIsLoading(false);
           
@@ -411,7 +423,11 @@ export default function InterviewPage() {
         // Fallback to simple question
         const fallbackQuestion = "Tell me about yourself.";
         setCurrentQuestion(fallbackQuestion);
-        setMessages([{ role: "assistant", content: fallbackQuestion }]);
+        // Include the initial user message in the messages state to maintain conversation history
+        setMessages([
+          ...initialMessages,
+          { role: "assistant", content: fallbackQuestion }
+        ]);
         setQuestionCount(1);
         setIsLoading(false);
 
@@ -449,8 +465,11 @@ export default function InterviewPage() {
       setIsListening(false);
     }
 
-    // Add user answer to messages
-    const newMessages = [...messages, { role: "user" as const, content: answer }];
+    // Use ref to get latest messages (always up-to-date)
+    const currentMessages = messagesRef.current;
+    const newMessages = [...currentMessages, { role: "user" as const, content: answer }];
+    
+    // Update state
     setMessages(newMessages);
     setUserAnswer("");
     setInterimTranscript("");
@@ -461,7 +480,7 @@ export default function InterviewPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       
-      // Call AWS Bedrock API for AI response
+      // Call AWS Bedrock API for AI response with full conversation history
       const response = await fetch('/api/ai/respond', {
         method: 'POST',
         headers: {
@@ -479,7 +498,8 @@ export default function InterviewPage() {
       const data = await response.json();
       const nextQuestion = data.response;
       
-      const newQuestionCount = questionCount + 1;
+      // Increment question count using ref to ensure we have latest value
+      const newQuestionCount = questionCountRef.current + 1;
       setQuestionCount(newQuestionCount);
       
       // Check if we've reached the maximum number of questions
@@ -638,6 +658,60 @@ export default function InterviewPage() {
            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   };
 
+  // Handle microphone permission request (for Request Permission button)
+  // CRITICAL: This must call getUserMedia IMMEDIATELY to preserve user interaction context on iOS
+  const handleRequestPermission = async () => {
+    // Minimal check - only verify getUserMedia exists
+    if (!navigator.mediaDevices?.getUserMedia) {
+      alert('Microphone access is not available in this browser.');
+      return;
+    }
+
+    try {
+      console.log('🎤 Requesting microphone permission via Request Permission button (immediate call)...');
+      setMicrophonePermission('checking');
+      
+      // CRITICAL: Call getUserMedia IMMEDIATELY - create promise first, then await
+      // This ensures the permission request happens in the user interaction context
+      const permissionPromise = navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
+      // Await the promise
+      const stream = await permissionPromise;
+      
+      // Stop the stream immediately - we just needed permission
+      stream.getTracks().forEach(track => track.stop());
+      
+      // Update permission status
+      setMicrophonePermission('granted');
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.setMicrophonePermissionGranted(true);
+      }
+      
+      console.log('✅ Microphone permission granted via Request Permission button');
+    } catch (error: any) {
+      console.error('❌ Microphone permission error:', error);
+      setMicrophonePermission('denied');
+      
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.setMicrophonePermissionGranted(false);
+      }
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Microphone permission was denied.\n\nTo enable:\n1. Tap the "AA" icon in Safari address bar\n2. Select "Website Settings"\n3. Set Microphone to "Allow"\n4. Refresh the page\n\nOr go to Settings > Safari > Microphone and allow access for this website.');
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        alert('No microphone found. Please connect a microphone and try again.');
+      } else {
+        alert(`Microphone permission error: ${error.message || error.name}\n\nPlease ensure you allow microphone access when prompted.`);
+      }
+    }
+  };
+
   const startVoiceInput = async () => {
     if (!speechRecognitionRef.current || isListening || isAISpeaking) {
       console.log('Cannot start voice input:', {
@@ -740,6 +814,77 @@ export default function InterviewPage() {
   };
 
   // Helper function to get session token with retry
+  // Generate report in background (don't wait for it)
+  const generateReportInBackground = async (sessionId: string, messages: Message[], token: string | null) => {
+    // Run in background - don't await
+    (async () => {
+      try {
+        console.log('🔄 Starting background report generation for session:', sessionId);
+        
+        const reportHeaders: HeadersInit = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          reportHeaders['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const reportResponse = await fetch('/api/interview/generate-report', {
+          method: 'POST',
+          headers: reportHeaders,
+          credentials: 'include',
+          body: JSON.stringify({
+            messages: messages,
+            duration: 0,
+          }),
+        });
+
+        if (reportResponse.ok) {
+          const reportData = await reportResponse.json();
+          const report = reportData.report;
+          
+          if (report && typeof report === 'object' && Object.keys(report).length > 0) {
+            // Update the session with the generated report
+            const updateHeaders: HeadersInit = {
+              'Content-Type': 'application/json',
+            };
+            
+            if (token) {
+              updateHeaders['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const updateResponse = await fetch('/api/interview/update-report', {
+              method: 'POST',
+              headers: updateHeaders,
+              credentials: 'include',
+              body: JSON.stringify({
+                sessionId: sessionId,
+                report: report,
+              }),
+            });
+            
+            if (updateResponse.ok) {
+              console.log('✅ Report generated and saved to session:', sessionId);
+            } else {
+              console.error('❌ Failed to update session with report:', await updateResponse.text());
+            }
+          } else {
+            console.error('❌ Report generation returned empty/null report');
+          }
+        } else {
+          const errorData = await reportResponse.json().catch(() => ({}));
+          console.error('❌ Background report generation failed:', {
+            status: reportResponse.status,
+            error: errorData.error || 'Unknown error'
+          });
+        }
+      } catch (error: any) {
+        console.error('❌ Error in background report generation:', error.message || error);
+        // Don't show error to user - it's running in background
+      }
+    })();
+  };
+
   const getSessionToken = async (): Promise<string | null> => {
     try {
       // Try to get session
@@ -791,7 +936,8 @@ export default function InterviewPage() {
     }
 
 
-    // Generate report and save session
+    // Save session and redirect to dashboard immediately
+    // Report will be generated in the background
     // Ensure we have a valid user session before proceeding
     if (!user) {
       console.error('Cannot save interview: No user found');
@@ -802,65 +948,10 @@ export default function InterviewPage() {
     
     if (messages.length > 0) {
       try {
-        // Generate report (with timeout and error handling)
-        let report = null;
-        let reportGenerated = false;
-        try {
-          const reportController = new AbortController();
-          const reportTimeout = setTimeout(() => reportController.abort(), 30000); // 30 second timeout
-          
-          // Get session token for report generation
-          const reportToken = await getSessionToken();
-          if (!reportToken) {
-            console.error('Failed to get session token for report generation');
-          }
-          
-          const reportHeaders: HeadersInit = {
-            'Content-Type': 'application/json',
-          };
-          
-          if (reportToken) {
-            reportHeaders['Authorization'] = `Bearer ${reportToken}`;
-            console.log('Authorization header set for report generation');
-          } else {
-            console.warn('No token available for report generation - will rely on cookies');
-          }
-          
-          const reportResponse = await fetch('/api/interview/generate-report', {
-            method: 'POST',
-            headers: reportHeaders,
-            credentials: 'include',
-            body: JSON.stringify({
-              messages: messages,
-              duration: 0,
-            }),
-            signal: reportController.signal,
-          });
-
-          clearTimeout(reportTimeout);
-
-          if (reportResponse.ok) {
-            const reportData = await reportResponse.json();
-            report = reportData.report;
-            reportGenerated = true;
-            console.log('Report generated successfully');
-          } else {
-            const errorData = await reportResponse.json().catch(() => ({}));
-            console.warn('Report generation failed (non-critical):', errorData.error || 'Unknown error');
-            // Continue without report
-          }
-        } catch (reportError: any) {
-          if (reportError.name === 'AbortError') {
-            console.warn('Report generation timed out (non-critical)');
-          } else {
-            console.warn('Error generating report (non-critical):', reportError.message || reportError);
-          }
-          // Continue without report
-        }
-
-        // Save session (with error handling)
+        // Save session immediately (without report - it will be generated in background)
         let sessionSaved = false;
         let sessionId = null;
+        
         try {
           // Get session token for save request
           const saveToken = await getSessionToken();
@@ -879,6 +970,11 @@ export default function InterviewPage() {
             console.warn('No token available for save - will rely on cookies');
           }
           
+          console.log('💾 Saving session (report will be generated in background):', {
+            messageCount: messages.length
+          });
+          
+          // Save session without report - report will be null initially
           const saveResponse = await fetch('/api/interview/save', {
             method: 'POST',
             headers: saveHeaders,
@@ -888,7 +984,7 @@ export default function InterviewPage() {
                 messages: messages,
                 currentQuestion: currentQuestion,
               },
-              report: report,
+              report: null, // Report will be generated in background
               duration: 0,
             }),
           });
@@ -897,41 +993,74 @@ export default function InterviewPage() {
             const { session } = await saveResponse.json();
             sessionId = session.id;
             sessionSaved = true;
-            console.log('Session saved successfully');
+            console.log('✅ Session saved successfully with ID:', sessionId);
+            
+            // Trigger report generation in background (don't wait for it)
+            generateReportInBackground(sessionId, messages, saveToken);
+            
+            // Redirect to dashboard immediately
+            setIsLoading(false);
+            router.push('/dashboard');
+            return;
           } else {
             const errorData = await saveResponse.json().catch(() => ({}));
-            console.error('Failed to save interview session:', errorData.error || 'Unknown error');
-            // Don't show error if report was generated - we can still show the report
+            console.error('❌ Failed to save interview session:', {
+              status: saveResponse.status,
+              statusText: saveResponse.statusText,
+              error: errorData.error || 'Unknown error',
+              response: errorData
+            });
+            
+            // Try to check if session was actually saved (sometimes the response fails but data is saved)
+            if (saveToken) {
+              try {
+                const { data: existingSessions } = await supabase
+                  .from('interview_sessions')
+                  .select('id, created_at')
+                  .eq('user_id', user.id)
+                  .order('created_at', { ascending: false })
+                  .limit(1);
+                
+                if (existingSessions && existingSessions.length > 0) {
+                  const latestSession = existingSessions[0];
+                  const sessionAge = Date.now() - new Date(latestSession.created_at).getTime();
+                  // If session was created in the last 30 seconds, it's likely our session
+                  if (sessionAge < 30000) {
+                    console.log('✅ Found recently created session, using it:', latestSession.id);
+                    sessionId = latestSession.id;
+                    sessionSaved = true;
+                    
+                    // Trigger report generation in background
+                    generateReportInBackground(sessionId, messages, saveToken);
+                    
+                    // Redirect to dashboard
+                    setIsLoading(false);
+                    router.push('/dashboard');
+                    return;
+                  }
+                }
+              } catch (checkError) {
+                console.warn('Could not verify if session was saved:', checkError);
+              }
+            }
           }
         } catch (saveError: any) {
           console.error('Error saving interview session:', saveError.message || saveError);
-          // Don't show error if report was generated - we can still show the report
         }
 
-        // Redirect based on what succeeded
-        if (sessionSaved && sessionId) {
-          // Best case: both report and session saved, redirect to report page
-          router.push(`/interview/report/${sessionId}`);
-          return;
-        } else if (reportGenerated && report) {
-          // Report generated but save failed - store report temporarily and show it
-          // Store report in sessionStorage for temporary viewing
-          const tempReportData = {
-            report: report,
-            messages: messages,
-            duration: 0,
-            timestamp: Date.now(),
-          };
-          sessionStorage.setItem('temp_interview_report', JSON.stringify(tempReportData));
-          router.push('/interview/report/temp');
-          return;
-        } else {
-          // Both failed - show error
-          alert('Interview ended, but there was an error generating the report and saving the session. Please try again later.');
-        }
+        // If we got here, saving failed
+        setIsLoading(false);
+        alert('Interview ended, but there was an error saving the session.\n\nPlease check:\n1. Your internet connection\n2. Try refreshing the page\n3. Check the Reports page to see if it was saved\n\nIf the problem persists, please contact support.');
+        
+        // Still redirect to dashboard so user can check if anything was saved
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 2000);
       } catch (error: any) {
         console.error('Unexpected error during interview end:', error.message || error);
+        setIsLoading(false);
         alert('An unexpected error occurred. The interview has ended.');
+        router.push('/dashboard');
       }
     }
 
@@ -964,37 +1093,41 @@ export default function InterviewPage() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-8 pb-24 bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 relative overflow-hidden">
-      {/* Animated background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }}></div>
-      </div>
-      
-      <div className="max-w-5xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="glass-dark rounded-3xl shadow-2xl p-8 mb-8 border border-white/10">
+    <div className="h-screen flex flex-col px-4 py-4 pb-20 bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
+      <div className="max-w-4xl mx-auto w-full h-full flex flex-col relative z-10">
+        {/* Clean Header */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-4 border border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-4xl font-bold gradient-text mb-2">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
                 AI Interview Practice
               </h1>
-              <p className="text-gray-400 text-sm font-medium">Practice your interview skills with real-time AI feedback</p>
+              {isInterviewing && questionCount > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <span className="text-blue-700 dark:text-blue-300 text-sm font-medium">Question {questionCount} of {MAX_QUESTIONS}</span>
+                </div>
+              )}
             </div>
             {isInterviewing && (
-              <div className="flex items-center gap-3">
-                {questionCount > 0 && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-primary-500/20 rounded-xl border border-primary-500/30">
-                    <span className="text-primary-300 text-sm font-semibold">Question {questionCount}/{MAX_QUESTIONS}</span>
-                  </div>
-                )}
-              <button
-                onClick={endInterview}
-                  className="flex items-center gap-2 px-5 py-2.5 text-red-300 hover:text-white bg-red-500/20 hover:bg-red-500/30 rounded-xl transition-all duration-200 border border-red-500/30 hover:border-red-500/50"
-              >
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleAudio}
+                  className={`p-2.5 rounded-lg transition-all ${
+                    isAudioEnabled 
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' 
+                      : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40'
+                  }`}
+                  title={isAudioEnabled ? "Mute AI voice" : "Unmute AI voice"}
+                >
+                  {isAudioEnabled ? <FiVolume2 className="text-lg" /> : <FiVolumeX className="text-lg" />}
+                </button>
+                <button
+                  onClick={endInterview}
+                  className="flex items-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-all duration-200 border border-red-200 dark:border-red-800"
+                >
                   <FiX className="text-lg" />
-                  <span className="hidden sm:inline text-sm font-semibold">End Interview</span>
-              </button>
+                  <span className="text-sm font-medium">End Interview</span>
+                </button>
               </div>
             )}
           </div>
@@ -1002,104 +1135,105 @@ export default function InterviewPage() {
 
         {!isInterviewing ? (
           /* Start Interview Screen */
-          <div className="glass-dark rounded-3xl shadow-2xl p-10 text-center border border-white/10 card-hover">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 text-center border border-gray-200 dark:border-gray-700 flex-1 flex flex-col justify-center overflow-y-auto">
             <div className="mb-8">
-              <div className="w-24 h-24 bg-gradient-to-br from-primary-500/30 to-primary-600/30 rounded-3xl flex items-center justify-center mx-auto mb-6 border-2 border-primary-500/50 shadow-2xl shadow-primary-500/30">
-                <FiMic className="text-5xl text-primary-300" />
+              <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-200 dark:border-blue-800">
+                <FiMic className="text-4xl text-blue-600 dark:text-blue-400" />
               </div>
-              <h2 className="text-3xl font-bold text-white mb-3">Ready to Practice?</h2>
-              <p className="text-gray-400 text-base leading-relaxed max-w-2xl mx-auto">
+              <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-3">Ready to Practice?</h2>
+              <p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed max-w-xl mx-auto">
                 Start an AI-powered interview session. Answer questions naturally, and our AI will speak to you and provide intelligent follow-up questions.
               </p>
             </div>
 
             {/* Microphone Permission Status */}
             {microphonePermission === 'checking' && (
-              <div className="mb-6 glass rounded-2xl p-5 border border-blue-500/40 bg-gradient-to-r from-blue-500/10 to-blue-600/10 backdrop-blur-sm">
+              <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
                 <div className="flex items-center gap-3">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
-                  <p className="text-blue-300 text-sm font-medium">
-                    Requesting microphone permission...
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent"></div>
+                  <p className="text-blue-700 dark:text-blue-300 text-sm font-medium">
+                    Checking microphone permission...
                   </p>
                 </div>
               </div>
             )}
 
             {microphonePermission === 'prompt' && isIOS() && voiceInputMode && (
-              <div className="mb-6 glass rounded-2xl p-5 border border-blue-500/40 bg-gradient-to-r from-blue-500/10 to-blue-600/10 backdrop-blur-sm">
+              <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
                 <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                   </svg>
-                  <div className="flex-1">
-                    <p className="text-blue-300 text-sm font-semibold mb-2">Microphone Access Required</p>
-                    <p className="text-blue-200 text-sm">
-                      When you click "Start Interview", your iPhone will prompt you to allow microphone access. 
-                      Please tap <strong>"Allow"</strong> to enable voice input for the AI interview.
-                    </p>
-                  </div>
+                  <p className="text-blue-700 dark:text-blue-300 text-sm">
+                    When you click "Start Interview", your iPhone will prompt you to allow microphone access. 
+                    Please tap <strong>"Allow"</strong> to enable voice input.
+                  </p>
                 </div>
               </div>
             )}
 
             {microphonePermission === 'denied' && (
-              <div className="mb-6 glass rounded-2xl p-5 border border-red-500/40 bg-gradient-to-r from-red-500/10 to-red-600/10 backdrop-blur-sm">
+              <div className="mb-6 bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
                 <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                   <div className="flex-1">
-                    <p className="text-red-300 text-sm font-semibold mb-2">Microphone Permission Denied</p>
-                    <p className="text-red-200 text-sm mb-3">
-                      {isIOS() ? (
-                        <>
-                          To use voice input, please enable microphone access:
-                          <ol className="list-decimal list-inside mt-2 space-y-1 text-xs">
-                            <li>Go to <strong>Settings</strong> → <strong>Safari</strong> → <strong>Microphone</strong></li>
-                            <li>Select <strong>Allow</strong> or ensure this website is set to <strong>Ask</strong></li>
-                            <li>Refresh this page and try again</li>
-                          </ol>
-                        </>
-                      ) : (
-                        'Please enable microphone access in your browser settings to use voice input.'
-                      )}
+                    <p className="text-red-700 dark:text-red-400 text-sm font-semibold mb-1">Microphone Permission Denied</p>
+                    <p className="text-red-600 dark:text-red-500 text-sm mb-3">
+                      {isIOS() 
+                        ? 'Go to Settings → Safari → Microphone and enable access, then refresh.' 
+                        : /Android/.test(navigator.userAgent)
+                        ? 'Please allow microphone access when prompted, or go to your browser settings and enable microphone permission for this website, then refresh.'
+                        : 'Please enable microphone access in your browser settings.'}
                     </p>
                     <button
-                      onClick={async () => {
-                        const recognition = speechRecognitionRef.current;
-                        if (recognition) {
-                          try {
-                            setMicrophonePermission('checking');
-                            const granted = await recognition.requestMicrophonePermission();
-                            // Sync the permission status
-                            recognition.setMicrophonePermissionGranted(granted);
-                            setMicrophonePermission(granted ? 'granted' : 'denied');
-                          } catch (error) {
-                            console.error('Error requesting permission:', error);
-                            setMicrophonePermission('denied');
-                            recognition.setMicrophonePermissionGranted(false);
+                      type="button"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // CRITICAL FOR iOS: Call getUserMedia IMMEDIATELY in the click handler
+                        // No function calls, no delays - direct call to preserve user interaction context
+                        if (!navigator.mediaDevices?.getUserMedia) {
+                          alert('Microphone access is not available in this browser.');
+                          return;
+                        }
+
+                        try {
+                          console.log('🎤 Requesting microphone permission (direct button call)...');
+                          setMicrophonePermission('checking');
+                          
+                          // Direct call - create promise immediately, then await
+                          const stream = await navigator.mediaDevices.getUserMedia({ 
+                            audio: {
+                              echoCancellation: true,
+                              noiseSuppression: true,
+                              autoGainControl: true
+                            } 
+                          });
+                          
+                          stream.getTracks().forEach(track => track.stop());
+                          setMicrophonePermission('granted');
+                          if (speechRecognitionRef.current) {
+                            speechRecognitionRef.current.setMicrophonePermissionGranted(true);
                           }
-                        } else if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                          try {
-                            setMicrophonePermission('checking');
-                            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                            stream.getTracks().forEach(track => track.stop());
-                            setMicrophonePermission('granted');
-                            // Try to sync with recognition if it exists now
-                            const recognitionAfter = speechRecognitionRef.current;
-                            if (recognitionAfter) {
-                              recognitionAfter.setMicrophonePermissionGranted(true);
-                            }
-                          } catch (error) {
-                            setMicrophonePermission('denied');
-                            const recognitionAfter = speechRecognitionRef.current;
-                            if (recognitionAfter) {
-                              recognitionAfter.setMicrophonePermissionGranted(false);
-                            }
+                          console.log('✅ Microphone permission granted');
+                        } catch (error: any) {
+                          console.error('❌ Microphone permission error:', error);
+                          setMicrophonePermission('denied');
+                          if (speechRecognitionRef.current) {
+                            speechRecognitionRef.current.setMicrophonePermissionGranted(false);
+                          }
+                          
+                          if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                            alert('Microphone permission was denied.\n\nTo enable:\n1. Tap the "AA" icon in Safari address bar\n2. Select "Website Settings"\n3. Set Microphone to "Allow"\n4. Refresh the page');
+                          } else {
+                            alert(`Error: ${error.message || error.name}`);
                           }
                         }
                       }}
-                      className="text-xs px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-lg border border-red-500/40 transition-colors"
+                      className="text-sm px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-800 dark:hover:bg-red-900 text-white rounded-lg transition-colors font-medium"
                     >
                       Request Permission
                     </button>
@@ -1109,48 +1243,40 @@ export default function InterviewPage() {
             )}
 
             {microphonePermission === 'granted' && (
-              <div className="mb-6 glass rounded-2xl p-4 border border-green-500/40 bg-gradient-to-r from-green-500/10 to-green-600/10 backdrop-blur-sm">
+              <div className="mb-6 bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
                 <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-green-300 text-sm font-medium">
-                    Microphone permission granted. You're ready to start!
+                  <p className="text-green-700 dark:text-green-300 text-sm font-medium">
+                    Microphone permission granted. Ready to start!
                   </p>
                 </div>
               </div>
             )}
 
-            <div className="space-y-4 mb-8 text-left max-w-2xl mx-auto">
-              <div className="glass rounded-2xl p-6 border border-primary-500/20">
+            <div className="mb-8 text-left max-w-xl mx-auto">
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-5 border border-gray-200 dark:border-gray-600">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-primary-500/20 rounded-xl">
-                    <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
-                  <h3 className="font-bold text-white text-lg">Tips for a great interview:</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white text-base">Tips for Success</h3>
                 </div>
-                <ul className="text-sm text-gray-300 space-y-2.5">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary-400 mt-1">•</span>
-                    <span>Be specific and provide concrete examples</span>
+                <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-2.5">
+                  <li className="flex items-start gap-3">
+                    <span className="text-blue-600 dark:text-blue-400 mt-1 font-semibold">•</span>
+                    <span>Be specific with concrete examples from your experience</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary-400 mt-1">•</span>
+                  <li className="flex items-start gap-3">
+                    <span className="text-blue-600 dark:text-blue-400 mt-1 font-semibold">•</span>
                     <span>Use the STAR method (Situation, Task, Action, Result)</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary-400 mt-1">•</span>
-                    <span>Take your time to think before answering</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary-400 mt-1">•</span>
-                    <span>Be honest and authentic in your responses</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary-400 mt-1">•</span>
-                    <span>Look at the camera and speak clearly</span>
+                  <li className="flex items-start gap-3">
+                    <span className="text-blue-600 dark:text-blue-400 mt-1 font-semibold">•</span>
+                    <span>Take time to think before answering</span>
                   </li>
                 </ul>
               </div>
@@ -1159,75 +1285,47 @@ export default function InterviewPage() {
             <button
               onClick={startInterview}
               disabled={microphonePermission === 'denied' && voiceInputMode}
-              className={`group relative w-full py-5 px-8 bg-gradient-to-r from-primary-600 via-primary-500 to-primary-600 text-white rounded-2xl font-bold text-lg hover:from-primary-500 hover:via-primary-400 hover:to-primary-500 transition-all duration-300 shadow-2xl shadow-primary-500/40 hover:shadow-primary-500/60 active:scale-[0.98] transform overflow-hidden ${
+              className={`w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-xl font-semibold text-base transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] transform flex items-center justify-center gap-2 ${
                 microphonePermission === 'denied' && voiceInputMode
                   ? 'opacity-50 cursor-not-allowed'
                   : ''
               }`}
             >
-              <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <span className="relative flex items-center justify-center gap-3">
-                <FiMic className="w-6 h-6" />
-                {isIOS() && microphonePermission === 'prompt' && voiceInputMode
-                  ? 'Enable Microphone & Start Interview'
-                  : 'Start Interview'}
-                <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </span>
+              <FiMic className="w-5 h-5" />
+              {isIOS() && microphonePermission === 'prompt' && voiceInputMode
+                ? 'Enable Mic & Start'
+                : 'Start Interview'}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
             </button>
-            {microphonePermission === 'denied' && voiceInputMode && (
-              <p className="text-center text-sm text-gray-400 mt-2">
-                Switch to text mode or grant microphone permission to start
-              </p>
-            )}
-            {isIOS() && microphonePermission === 'prompt' && voiceInputMode && (
-              <p className="text-center text-sm text-blue-300 mt-2">
-                You'll be prompted to allow microphone access when you click above
-              </p>
-            )}
           </div>
         ) : (
           /* Interview Session */
-          <div className="space-y-6">
-            {/* Audio Control */}
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={toggleAudio}
-                className={`p-3 rounded-xl backdrop-blur-md transition-all shadow-lg ${
-                  isAudioEnabled 
-                    ? 'bg-gray-800/90 text-white hover:bg-gray-700/90 border border-gray-600/50' 
-                    : 'bg-red-500/90 text-white hover:bg-red-600 border border-red-400/50'
-                }`}
-                title={isAudioEnabled ? "Mute AI voice" : "Unmute AI voice"}
-              >
-                {isAudioEnabled ? <FiVolume2 className="text-xl" /> : <FiVolumeX className="text-xl" />}
-              </button>
-            </div>
-
+          <div className="flex-1 flex flex-col min-h-0 space-y-4">
             {/* Messages Chat Container */}
             <div 
               ref={messagesContainerRef}
-              className="glass-dark rounded-3xl shadow-2xl p-6 min-h-[400px] max-h-[500px] overflow-y-auto border border-white/10 mb-6 custom-scrollbar"
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 flex-1 min-h-0 overflow-y-auto border border-gray-200 dark:border-gray-700"
             >
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {messages.map((message, index) => (
                   <div
                     key={index}
-                    className={`flex items-start gap-4 ${message.role === "user" ? "flex-row-reverse" : "flex-row"} animate-fade-in`}
+                    className={`flex items-start gap-3 ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}
                   >
                     {/* Avatar */}
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                       message.role === "user"
-                        ? "bg-gradient-to-br from-primary-500 to-primary-600 ring-2 ring-primary-400/50"
-                        : "bg-gradient-to-br from-gray-700 to-gray-800 ring-2 ring-gray-600/50"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
                     }`}>
                       {message.role === "user" ? (
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                       ) : (
-                        <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </svg>
                       )}
@@ -1236,33 +1334,33 @@ export default function InterviewPage() {
                     {/* Message Bubble */}
                     <div className={`flex flex-col gap-1 max-w-[75%] ${message.role === "user" ? "items-end" : "items-start"}`}>
                       <div
-                        className={`rounded-2xl px-5 py-4 shadow-lg transition-all duration-200 ${
+                        className={`rounded-2xl px-4 py-3 ${
                         message.role === "user"
-                            ? "bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 text-white rounded-tr-sm shadow-primary-500/30"
-                            : "bg-gradient-to-br from-gray-800/90 to-gray-900/90 text-gray-100 rounded-tl-sm border border-gray-700/50 backdrop-blur-sm"
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                         }`}
                       >
-                        <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium">{message.content}</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                       </div>
-                      <span className={`text-xs text-gray-500 px-2 ${message.role === "user" ? "text-right" : "text-left"}`}>
+                      <span className={`text-xs text-gray-500 dark:text-gray-400 px-2 ${message.role === "user" ? "text-right" : "text-left"}`}>
                         {message.role === "user" ? "You" : "AI Interviewer"}
                       </span>
                     </div>
                   </div>
                 ))}
                 {isLoading && (
-                  <div className="flex items-start gap-4 animate-fade-in">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800 ring-2 ring-gray-600/50 shadow-lg">
-                      <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                       </svg>
                     </div>
-                    <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 rounded-2xl rounded-tl-sm px-5 py-4 border border-gray-700/50 backdrop-blur-sm">
+                    <div className="bg-gray-100 dark:bg-gray-700 rounded-2xl px-4 py-3">
                       <div className="flex gap-2 items-center">
-                        <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                        <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
-                        <span className="text-gray-400 text-sm ml-2">AI is thinking...</span>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                        <span className="text-gray-600 dark:text-gray-400 text-sm ml-2">AI is thinking...</span>
                       </div>
                     </div>
                   </div>
@@ -1272,169 +1370,141 @@ export default function InterviewPage() {
               </div>
             </div>
 
-            {/* Current Question Highlight */}
-            {currentQuestion && !isLoading && (
-              <div className="relative glass rounded-2xl p-6 mb-6 border-2 border-primary-500/50 bg-gradient-to-br from-primary-600/30 via-primary-500/20 to-primary-600/30 backdrop-blur-sm shadow-xl shadow-primary-500/20 animate-fade-in">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-primary-500 rounded-t-2xl"></div>
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 p-3 bg-primary-500/30 rounded-xl border border-primary-400/30 shadow-lg">
-                    <svg className="w-6 h-6 text-primary-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-primary-300 uppercase tracking-wider">Current Question</span>
-                    </div>
-                    <p className="text-white font-semibold text-lg leading-relaxed">{currentQuestion}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Answer Input */}
-            <div className="glass-dark rounded-3xl shadow-2xl p-6 border border-white/10 backdrop-blur-xl">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 border border-gray-200 dark:border-gray-700 flex-shrink-0">
               {/* Voice Input Mode Toggle */}
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setVoiceInputMode(!voiceInputMode)}
-                    className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl transition-all duration-300 font-semibold shadow-lg ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${
                       voiceInputMode
-                        ? "bg-gradient-to-r from-primary-500/30 to-primary-600/30 text-primary-200 border-2 border-primary-500/50 hover:border-primary-400/70 hover:from-primary-500/40 hover:to-primary-600/40"
-                        : "bg-gray-800/60 text-gray-400 border-2 border-gray-700/50 hover:border-gray-600/70 hover:bg-gray-800/80"
+                        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600"
                     }`}
                   >
                     {voiceInputMode ? (
                       <>
-                        <FiMic className="w-5 h-5" />
-                        <span className="text-sm">Voice Mode</span>
+                        <FiMic className="w-4 h-4" />
+                        <span>Voice</span>
                       </>
                     ) : (
                       <>
-                        <FiMicOff className="w-5 h-5" />
-                        <span className="text-sm">Text Mode</span>
+                        <FiMicOff className="w-4 h-4" />
+                        <span>Text</span>
                       </>
                     )}
                   </button>
                 </div>
                 {isAISpeaking && (
-                  <div className="flex items-center gap-3 px-5 py-2.5 bg-gradient-to-r from-primary-500/20 to-primary-600/20 rounded-xl border border-primary-500/40 shadow-lg">
-                    <div className="flex gap-1.5">
-                      <div className="w-2.5 h-2.5 bg-primary-400 rounded-full animate-bounce"></div>
-                      <div className="w-2.5 h-2.5 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                      <div className="w-2.5 h-2.5 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                      <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
                     </div>
-                    <span className="text-primary-200 text-sm font-bold">AI is speaking...</span>
+                    <span className="text-blue-700 dark:text-blue-300 text-sm font-medium">AI speaking...</span>
                   </div>
                 )}
               </div>
 
               {voiceInputMode ? (
                 /* Voice Input Mode */
-                <div className="space-y-4">
-                  {interimTranscript && (
-                    <div className="glass rounded-xl p-4 border-2 border-primary-500/40 bg-gradient-to-r from-primary-500/10 to-primary-600/10 backdrop-blur-sm">
+                <div className="space-y-3">
+                  {(interimTranscript || isListening) && (
+                    <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-800">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 bg-primary-400 rounded-full animate-pulse"></div>
-                        <span className="text-xs font-semibold text-primary-300 uppercase tracking-wide">Listening...</span>
+                        <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-pulse"></div>
+                        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Live Transcription</span>
                       </div>
-                      <p className="text-gray-200 text-base font-medium leading-relaxed">{interimTranscript}</p>
+                      <p className="text-gray-900 dark:text-white text-sm leading-relaxed min-h-[20px]">
+                        {interimTranscript || (isListening ? "Listening..." : "")}
+                      </p>
                     </div>
                   )}
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={(e) => toggleVoiceInput(e)}
                       onTouchStart={async (e) => {
-                        // For mobile, also handle touch events
                         e.preventDefault();
                         if (!isListening && !isAISpeaking && !isLoading) {
                           await toggleVoiceInput(e);
                         }
                       }}
                       disabled={isAISpeaking || isLoading}
-                      className={`flex-1 flex items-center justify-center gap-3 px-8 py-6 rounded-2xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transform active:scale-[0.98] touch-manipulation ${
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform active:scale-[0.98] touch-manipulation ${
                         isListening
-                          ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white ring-4 ring-red-500/30 animate-pulse"
-                          : "bg-gradient-to-r from-primary-600 via-primary-500 to-primary-600 hover:from-primary-500 hover:via-primary-400 hover:to-primary-500 text-white hover:shadow-primary-500/50"
+                          ? "bg-red-600 hover:bg-red-700 text-white"
+                          : "bg-blue-600 hover:bg-blue-700 text-white"
                       }`}
                     >
                       {isListening ? (
                         <>
-                          <div className="w-7 h-7 border-3 border-white rounded-full animate-ping"></div>
+                          <div className="w-4 h-4 border-2 border-white rounded-full animate-ping"></div>
                           <span>Listening... Click to stop</span>
                         </>
                       ) : (
                         <>
-                          <FiMic className="w-6 h-6" />
-                          <span>{isAISpeaking ? "Wait for AI to finish..." : "Click to speak your answer"}</span>
+                          <FiMic className="w-4 h-4" />
+                          <span>{isAISpeaking ? "Wait for AI..." : "Click to speak"}</span>
                         </>
                       )}
                     </button>
                   </div>
                   {!speechRecognitionRef.current?.isSupported() && (
-                    <div className="flex items-center gap-2 px-4 py-3 bg-yellow-500/20 border border-yellow-500/40 rounded-xl">
-                      <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <svg className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
-                      <p className="text-yellow-300 text-sm font-medium">
-                        Voice input may not be supported in this browser. 
-                        {typeof window !== 'undefined' && /iPad|iPhone|iPod|Android/.test(navigator.userAgent) && (
-                          <span className="block mt-1">On mobile, please ensure you're using Safari (iOS) or Chrome (Android) and have granted microphone permissions in your browser settings.</span>
-                        )}
-                        {typeof window !== 'undefined' && !/iPad|iPhone|iPod|Android/.test(navigator.userAgent) && (
-                          <span className="block mt-1">Please use text mode or try Chrome, Edge, or Safari.</span>
-                        )}
+                      <p className="text-yellow-700 dark:text-yellow-300 text-xs font-medium">
+                        Voice input may not be supported. Use text mode or try Chrome/Edge/Safari.
                       </p>
                     </div>
                   )}
                   {speechRecognitionRef.current?.isSupported() && isIOS() && !isListening && !isAISpeaking && (
-                    <div className="flex items-center gap-2 px-4 py-3 bg-blue-500/20 border border-blue-500/40 rounded-xl">
-                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <p className="text-blue-300 text-sm font-medium">
-                        <span className="font-semibold">iOS Tip:</span> Click the microphone button above to start voice input. Voice input must be started manually on iOS devices.
+                      <p className="text-blue-700 dark:text-blue-300 text-xs font-medium">
+                        <span className="font-semibold">iOS:</span> Click mic button to start voice input.
                       </p>
                     </div>
                   )}
                 </div>
               ) : (
                 /* Text Input Mode */
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="relative">
-              <textarea
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
+                    <textarea
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
                       onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    submitAnswer();
-                  }
-                }}
-                placeholder="Type your answer here... (Press Enter to submit, Shift+Enter for new line)"
-                      className="w-full px-5 py-4 bg-gray-900/60 border-2 border-gray-700/50 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500/70 focus:ring-4 focus:ring-primary-500/20 resize-none transition-all duration-300 text-base leading-relaxed backdrop-blur-sm"
-                      rows={5}
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          submitAnswer();
+                        }
+                      }}
+                      placeholder="Type your answer..."
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none transition-all duration-200 text-sm leading-relaxed"
+                      rows={3}
                       disabled={isLoading || isAISpeaking}
                     />
-                    <div className="absolute bottom-3 right-3 flex items-center gap-2 text-xs text-gray-500">
-                      <kbd className="px-2 py-1 bg-gray-800/50 rounded border border-gray-700/50">Enter</kbd>
+                    <div className="absolute bottom-3 right-3 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                      <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500">Enter</kbd>
                       <span>to send</span>
                     </div>
                   </div>
-                <button
+                  <button
                     onClick={() => submitAnswer()}
                     disabled={!userAnswer.trim() || isLoading || isAISpeaking}
-                    className="w-full flex items-center justify-center gap-3 px-8 py-5 bg-gradient-to-r from-primary-600 via-primary-500 to-primary-600 hover:from-primary-500 hover:via-primary-400 hover:to-primary-500 text-white rounded-2xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl hover:shadow-primary-500/50 transform active:scale-[0.98] group"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform active:scale-[0.98]"
                   >
-                    <FiSend className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <FiSend className="w-4 h-4" />
                     <span>Send Answer</span>
-                    <svg className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                </button>
-              </div>
+                  </button>
+                </div>
               )}
             </div>
           </div>

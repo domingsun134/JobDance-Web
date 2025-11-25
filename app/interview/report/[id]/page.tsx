@@ -59,6 +59,8 @@ export default function InterviewReportPage() {
   const [report, setReport] = useState<InterviewReport | null>(null);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
+  const [reportGenerating, setReportGenerating] = useState(false);
 
   useEffect(() => {
     async function loadReport() {
@@ -83,8 +85,15 @@ export default function InterviewReportPage() {
         }
 
         setSession(data);
+        
+        // If report exists, set it
         if (data.report) {
           setReport(data.report);
+          setReportGenerating(false);
+        } else {
+          // Report is not ready yet - start polling
+          setReportGenerating(true);
+          startPollingForReport(params.id as string, currentUser.id);
         }
       } catch (error) {
         console.error('Error loading report:', error);
@@ -94,6 +103,66 @@ export default function InterviewReportPage() {
     }
     loadReport();
   }, [params.id, router]);
+
+  // Poll for report availability
+  const startPollingForReport = async (sessionId: string, userId: string) => {
+    let pollCount = 0;
+    const maxPolls = 60; // Poll for up to 5 minutes (60 * 5 seconds)
+    const pollInterval = 5000; // Poll every 5 seconds
+
+    const poll = async () => {
+      if (pollCount >= maxPolls) {
+        console.log('Polling timeout - report generation may have failed');
+        setReportGenerating(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('interview_sessions')
+          .select('report')
+          .eq('id', sessionId)
+          .eq('user_id', userId)
+          .single();
+
+        if (error) {
+          console.error('Error polling for report:', error);
+          pollCount++;
+          setTimeout(poll, pollInterval);
+          return;
+        }
+
+        if (data && data.report) {
+          // Report is ready!
+          setReport(data.report);
+          setReportGenerating(false);
+          
+          // Update session state
+          const { data: fullSession } = await supabase
+            .from('interview_sessions')
+            .select('*')
+            .eq('id', sessionId)
+            .eq('user_id', userId)
+            .single();
+          
+          if (fullSession) {
+            setSession(fullSession);
+          }
+        } else {
+          // Report not ready yet, continue polling
+          pollCount++;
+          setTimeout(poll, pollInterval);
+        }
+      } catch (error) {
+        console.error('Error in poll:', error);
+        pollCount++;
+        setTimeout(poll, pollInterval);
+      }
+    };
+
+    // Start polling
+    setTimeout(poll, pollInterval);
+  };
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-400";
@@ -107,6 +176,74 @@ export default function InterviewReportPage() {
     return "bg-red-500/20 border-red-500/30";
   };
 
+  const regenerateReport = async () => {
+    if (!session || !session.session_data) {
+      alert('Cannot regenerate report: Session data is missing.');
+      return;
+    }
+
+    setRegenerating(true);
+    try {
+      // Get session token
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const token = authSession?.access_token;
+
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Generate new report
+      const response = await fetch('/api/interview/generate-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          messages: session.session_data.messages || [],
+          duration: session.duration_seconds || 0,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to generate report');
+      }
+
+      const { report: newReport } = await response.json();
+
+      if (!newReport) {
+        throw new Error('Report generation returned empty result');
+      }
+
+      // Update the session directly in Supabase
+      const { error: updateError } = await supabase
+        .from('interview_sessions')
+        .update({ report: newReport })
+        .eq('id', session.id)
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Failed to update session with new report:', updateError);
+        // Even if update fails, show the generated report
+        setReport(newReport);
+        alert('Report generated successfully, but failed to save to database. The report is displayed below.');
+        return;
+      }
+
+      // Update local state and reload
+      setReport(newReport);
+      setSession({ ...session, report: newReport });
+      alert('Report regenerated successfully!');
+    } catch (error: any) {
+      console.error('Error regenerating report:', error);
+      alert(`Failed to regenerate report: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -115,20 +252,109 @@ export default function InterviewReportPage() {
     );
   }
 
-  if (!report || !session) {
+  if (!session) {
     return (
       <div className="min-h-screen px-4 py-8 pb-24 bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950">
         <div className="max-w-4xl mx-auto">
           <div className="glass-dark rounded-3xl shadow-2xl p-8 text-center">
             <FiAlertCircle className="text-6xl text-red-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-white mb-2">Report Not Found</h1>
-            <p className="text-gray-400 mb-6">The interview report you're looking for doesn't exist.</p>
+            <h1 className="text-2xl font-bold text-white mb-2">Session Not Found</h1>
+            <p className="text-gray-400 mb-6">The interview session you're looking for doesn't exist.</p>
             <button
               onClick={() => router.push("/dashboard")}
               className="px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-500 transition-all"
             >
               Go to Dashboard
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!report) {
+    // Show loading state if report is being generated
+    if (reportGenerating) {
+      return (
+        <div className="min-h-screen px-4 py-8 pb-24 bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 relative overflow-hidden">
+          {/* Animated background */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }}></div>
+          </div>
+
+          <div className="max-w-4xl mx-auto relative z-10">
+            <div className="glass-dark rounded-3xl shadow-2xl p-8 text-center border border-primary-500/30">
+              <div className="flex flex-col items-center justify-center">
+                <div className="relative mb-6">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-400"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <FiTrendingUp className="text-2xl text-primary-400" />
+                  </div>
+                </div>
+                <h1 className="text-3xl font-bold text-white mb-4">Generating Your Report</h1>
+                <p className="text-gray-400 mb-6 max-w-md">
+                  We're analyzing your interview responses and creating a comprehensive report. 
+                  This usually takes 30-60 seconds.
+                </p>
+                <div className="flex items-center gap-2 text-primary-400">
+                  <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                  <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                </div>
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="mt-8 px-6 py-3 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-600 transition-all"
+                >
+                  Go to Dashboard (Report will be ready soon)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Report not found and not generating
+    return (
+      <div className="min-h-screen px-4 py-8 pb-24 bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950">
+        <div className="max-w-4xl mx-auto">
+          <div className="glass-dark rounded-3xl shadow-2xl p-8 text-center border border-yellow-500/30">
+            <FiAlertCircle className="text-6xl text-yellow-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-white mb-2">Report Not Found</h1>
+            <p className="text-gray-400 mb-6">
+              The interview report for this session was not generated or is missing.
+              {session.session_data?.messages && session.session_data.messages.length > 0 && (
+                <span className="block mt-2">You can regenerate it using the button below.</span>
+              )}
+            </p>
+            <div className="flex gap-4 justify-center">
+              {session.session_data?.messages && session.session_data.messages.length > 0 ? (
+                <button
+                  onClick={regenerateReport}
+                  disabled={regenerating}
+                  className="px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {regenerating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiTrendingUp />
+                      <span>Regenerate Report</span>
+                    </>
+                  )}
+                </button>
+              ) : null}
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="px-6 py-3 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-600 transition-all"
+              >
+                Go to Dashboard
+              </button>
+            </div>
           </div>
         </div>
       </div>

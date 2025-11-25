@@ -220,7 +220,7 @@ export class SpeechSynthesis {
     audio.src = audioUrl;
     audio.volume = 1.0;
     audio.preload = 'auto';
-    audio.playsInline = true;
+    (audio as any).playsInline = true;
     audio.setAttribute('playsinline', 'true');
     audio.setAttribute('webkit-playsinline', 'true');
 

@@ -32,3 +32,5 @@ Supabase automatically replaces these variables:
 - Links to Terms of Service and Privacy Policy are included
 - The confirmation link expires in 24 hours (this is set in Supabase settings)
 
+
+

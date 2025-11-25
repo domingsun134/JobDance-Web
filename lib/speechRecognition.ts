@@ -6,6 +6,12 @@ export class SpeechRecognition {
   private onErrorCallback: ((error: string) => void) | null = null;
   private microphonePermissionGranted: boolean = false;
   private isIOS: boolean = false;
+  private accumulatedTranscript: string = '';
+  private silenceTimer: NodeJS.Timeout | null = null;
+  private SILENCE_TIMEOUT_MS: number = 5000; // 5 seconds (5000ms) of silence before auto-submitting answer - increased to prevent premature submission
+  private isAndroid: boolean = false;
+  private lastSpeechTime: number = 0; // Track when we last detected speech
+  private lastRestartTime: number = 0; // Track when we last restarted recognition to prevent rapid restarts
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -26,10 +32,10 @@ export class SpeechRecognition {
           this.recognition = new SpeechRecognition();
           
           // Android detection
-          const isAndroid = /Android/.test(navigator.userAgent);
+          this.isAndroid = /Android/.test(navigator.userAgent);
           
           // For mobile devices, use continuous mode and adjust settings
-          if (this.isIOS || isAndroid) {
+          if (this.isIOS || this.isAndroid) {
             this.recognition.continuous = true; // iOS needs continuous mode
             this.recognition.interimResults = true;
             // iOS Safari works better with maxAlternatives set to 1
@@ -65,34 +71,63 @@ export class SpeechRecognition {
             }
           }
 
-          // For iOS in continuous mode, we need to handle results differently
-          // Show interim results in real-time
-          if (interimTranscript && this.onResultCallback) {
-            this.onResultCallback(interimTranscript, true);
+          // Reset silence timer whenever we detect any speech (interim or final)
+          // This ensures we wait for 5 seconds of complete silence before submitting
+          if (interimTranscript || finalTranscript) {
+            this.clearSilenceTimer();
+            this.lastSpeechTime = Date.now(); // Update last speech time
+            
+            // Update accumulated transcript with final results
+            if (finalTranscript) {
+              this.accumulatedTranscript += finalTranscript;
+            }
+            
+            // Show current accumulated + interim results in real-time
+            const currentTranscript = (this.accumulatedTranscript + interimTranscript).trim();
+            if (currentTranscript && this.onResultCallback) {
+              this.onResultCallback(currentTranscript, true);
+            }
           }
 
-          // When we get a final result, call the callback
-          // In continuous mode, we should stop after getting a final result
-          if (finalTranscript && this.onResultCallback) {
-            const finalText = finalTranscript.trim();
+          // When we get a final result, start the silence timer
+          // Only submit after 5 seconds of silence to ensure user is done speaking
+          if (finalTranscript) {
+            const finalText = this.accumulatedTranscript.trim();
             if (finalText) {
-              // Call callback with final result
-              this.onResultCallback(finalText, false);
-              
-              // In continuous mode on mobile, stop after getting final result
-              // This prevents the recognition from continuing indefinitely
-              if (this.isIOS || isAndroid) {
-                // Stop recognition after getting final result
-                setTimeout(() => {
-                  if (this.recognition && this.isListening) {
-                    try {
-                      this.recognition.stop();
-                    } catch (e) {
-                      // Ignore stop errors
+              // Create a reusable callback function for the silence timer
+              const silenceTimerCallback = () => {
+                // 5 seconds of silence detected - user is done speaking
+                // Double-check that we haven't received new speech recently (within last 1 second)
+                const timeSinceLastSpeech = Date.now() - this.lastSpeechTime;
+                if (timeSinceLastSpeech >= this.SILENCE_TIMEOUT_MS - 1000) {
+                  // Safe to submit - we've had enough silence
+                  if (this.onResultCallback && this.accumulatedTranscript.trim()) {
+                    const textToSubmit = this.accumulatedTranscript.trim();
+                    this.accumulatedTranscript = ''; // Reset for next input
+                    this.onResultCallback(textToSubmit, false);
+                    
+                    // Stop recognition after submitting
+                    if (this.isIOS || this.isAndroid) {
+                      setTimeout(() => {
+                        if (this.recognition && this.isListening) {
+                          try {
+                            this.recognition.stop();
+                          } catch (e) {
+                            // Ignore stop errors
+                          }
+                        }
+                      }, 100);
                     }
                   }
-                }, 100);
-              }
+                } else {
+                  // New speech detected recently, restart the timer
+                  console.log('New speech detected, restarting silence timer');
+                  this.startSilenceTimer(silenceTimerCallback);
+                }
+              };
+              
+              // Start silence timer - if no new speech for 5 seconds, submit the answer
+              this.startSilenceTimer(silenceTimerCallback);
             }
           }
         };
@@ -101,8 +136,7 @@ export class SpeechRecognition {
           console.error('Speech recognition error:', event.error, event);
           
           // Don't stop on 'no-speech' errors in continuous mode - this is normal
-          const isAndroid = /Android/.test(navigator.userAgent);
-          if (event.error === 'no-speech' && (this.isIOS || isAndroid)) {
+          if (event.error === 'no-speech' && (this.isIOS || this.isAndroid)) {
             // In continuous mode, 'no-speech' is not necessarily an error
             // Just log it but don't stop or call error callback
             console.log('No speech detected (this is normal in continuous mode)');
@@ -139,9 +173,56 @@ export class SpeechRecognition {
 
         this.recognition.onend = () => {
           console.log('Speech recognition ended');
-          this.isListening = false;
-          // On iOS in continuous mode, recognition may end after getting a final result
-          // This is expected behavior, so we just mark as not listening
+          
+          // Don't submit immediately on end - let the silence timer handle submission
+          // This ensures we always wait the full 5 seconds of silence before submitting
+          // The timer will submit when it completes after 5 seconds
+          
+          // In continuous mode (iOS/Android), recognition might end automatically
+          // If we have an active silence timer, we need to restart recognition to keep listening
+          // This ensures we capture the full 5 seconds of silence before submitting
+          if (this.silenceTimer && this.accumulatedTranscript.trim()) {
+            // Recognition ended but we have text and a timer running
+            // Restart recognition to keep listening for the remaining silence period
+            // Prevent rapid restarts (at least 200ms between restarts)
+            const timeSinceLastRestart = Date.now() - this.lastRestartTime;
+            if (timeSinceLastRestart < 200) {
+              console.log('Skipping restart - too soon since last restart');
+              return;
+            }
+            
+            console.log('Recognition ended with active timer - restarting to continue listening for full 5 seconds');
+            this.lastRestartTime = Date.now();
+            
+            // Restart recognition after a short delay to avoid immediate errors
+            setTimeout(() => {
+              if (this.isListening && this.recognition && this.silenceTimer) {
+                try {
+                  this.recognition.start();
+                  console.log('Recognition restarted to continue listening');
+                } catch (error: any) {
+                  // If restart fails (e.g., already started), that's okay
+                  // The timer will still complete and submit
+                  console.log('Recognition restart skipped (may already be running):', error.message);
+                }
+              }
+            }, 100);
+          } else if (!this.silenceTimer && !this.accumulatedTranscript.trim()) {
+            // No timer and no text - recognition ended normally
+            this.isListening = false;
+          } else if (this.accumulatedTranscript.trim() && !this.silenceTimer) {
+            // Recognition ended, we have text, but no timer - start one now
+            // This handles cases where recognition stops unexpectedly
+            console.log('Recognition ended with text but no timer - starting silence timer');
+            this.startSilenceTimer(() => {
+              if (this.onResultCallback && this.accumulatedTranscript.trim()) {
+                const textToSubmit = this.accumulatedTranscript.trim();
+                this.accumulatedTranscript = '';
+                this.onResultCallback(textToSubmit, false);
+                this.isListening = false;
+              }
+            });
+          }
         };
         
         // iOS-specific: Handle speech start event
@@ -261,6 +342,12 @@ export class SpeechRecognition {
       return;
     }
 
+    // Reset accumulated transcript when starting new recognition
+    this.accumulatedTranscript = '';
+    this.clearSilenceTimer();
+    this.lastSpeechTime = 0; // Reset last speech time
+    this.lastRestartTime = 0; // Reset restart time
+    
     await this.attemptStart(onResult, onError);
   }
 
@@ -336,6 +423,11 @@ export class SpeechRecognition {
   }
 
   stop(): void {
+    // Clear the silence timer to prevent auto-submission when manually stopping
+    this.clearSilenceTimer();
+    this.accumulatedTranscript = '';
+    this.lastSpeechTime = 0;
+    this.lastRestartTime = 0;
     if (this.recognition && this.isListening) {
       try {
         this.recognition.stop();
@@ -343,6 +435,27 @@ export class SpeechRecognition {
         console.error('Error stopping speech recognition:', error);
       }
       this.isListening = false;
+    }
+  }
+
+  /**
+   * Start the silence timer - will trigger callback after 3 seconds of silence
+   */
+  private startSilenceTimer(callback: () => void): void {
+    this.clearSilenceTimer();
+    this.silenceTimer = setTimeout(() => {
+      callback();
+      this.silenceTimer = null;
+    }, this.SILENCE_TIMEOUT_MS);
+  }
+
+  /**
+   * Clear the silence timer (called when new speech is detected)
+   */
+  private clearSilenceTimer(): void {
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
     }
   }
 
