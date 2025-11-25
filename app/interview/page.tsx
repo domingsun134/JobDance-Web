@@ -143,6 +143,15 @@ export default function InterviewPage() {
   }, [messages, isLoading, currentQuestion]);
 
   const startInterview = async () => {
+    // Attempt to unlock audio playback immediately while we still have a user gesture context.
+    if (speechSynthesisRef.current) {
+      try {
+        await speechSynthesisRef.current.unlockAudio();
+      } catch (error) {
+        console.warn('Unable to unlock audio context before starting interview:', error);
+      }
+    }
+
     // For iOS, request microphone permission first (requires user interaction)
     // IMPORTANT: This must be called directly in the click handler to preserve user interaction context
     const isIOSDevice = typeof window !== 'undefined' && 
@@ -428,18 +437,6 @@ export default function InterviewPage() {
     // Start API call immediately (don't wait for audio setup)
     fetchInitialQuestion();
 
-    // Resume audio context on user interaction (required for autoplay)
-    // This runs in parallel with the API call (non-blocking)
-    if (speechSynthesisRef.current) {
-      // This will resume the audio context if it's suspended
-      try {
-        // Trigger a silent audio play to resume context
-        const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
-        silentAudio.play().catch(() => {}); // Don't await - run in parallel
-      } catch (e) {
-        // Ignore errors
-      }
-    }
   };
 
   const submitAnswer = async (answerText?: string) => {
