@@ -5,6 +5,7 @@ export class SpeechSynthesis {
   private synth: any = null; // Browser SpeechSynthesis API
   private isSpeaking: boolean = false;
   private useBrowserTTS: boolean = false;
+  private audioUnlocked: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -168,6 +169,33 @@ export class SpeechSynthesis {
 
   isCurrentlySpeaking(): boolean {
     return this.isSpeaking;
+  }
+
+  async unlockAudio(): Promise<void> {
+    if (this.audioUnlocked || typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      if (!this.audioContext && 'AudioContext' in window) {
+        this.audioContext = new AudioContext();
+      }
+
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        await this.audioContext.resume().catch(() => undefined);
+      }
+
+      const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
+      silentAudio.volume = 0;
+      silentAudio.preload = 'auto';
+      await silentAudio.play();
+      silentAudio.pause();
+      silentAudio.currentTime = 0;
+
+      this.audioUnlocked = true;
+    } catch (error) {
+      console.warn('Failed to unlock audio context:', error);
+    }
   }
 }
 
