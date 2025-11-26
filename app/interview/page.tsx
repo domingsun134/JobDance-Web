@@ -161,6 +161,20 @@ export default function InterviewPage() {
       (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
+    const beginAudioUnlock = () => {
+      if (!speechSynthesisRef.current) {
+        return null;
+      }
+      const unlockPromise = speechSynthesisRef.current
+        .unlockAudio()
+        .catch((error) => {
+          console.warn('Unable to unlock audio context before starting interview:', error);
+        });
+      return unlockPromise;
+    };
+
+    let pendingAudioUnlock: Promise<void> | null = null;
+
     // For iOS, request permission immediately if needed
     if (isIOSDevice && voiceInputMode && microphonePermission !== 'granted') {
       // Minimal checks - only the absolute essentials
@@ -182,6 +196,8 @@ export default function InterviewPage() {
             autoGainControl: true
           } 
         });
+
+        pendingAudioUnlock = beginAudioUnlock();
         
         // Await the promise
         const stream = await permissionPromise;
@@ -216,14 +232,21 @@ export default function InterviewPage() {
       }
     }
 
-    // Now proceed with other operations after permission is granted
-    // Attempt to unlock audio playback without blocking UI (mobile Safari sometimes delays resolution)
-    if (speechSynthesisRef.current) {
-      speechSynthesisRef.current.unlockAudio().catch((error) => {
-        console.warn('Unable to unlock audio context before starting interview:', error);
-      });
+    if (!pendingAudioUnlock) {
+      pendingAudioUnlock = beginAudioUnlock();
     }
 
+    const waitForAudioUnlock = async () => {
+      if (!pendingAudioUnlock) return;
+      try {
+        await pendingAudioUnlock;
+      } catch (error) {
+        console.warn('Audio unlock promise rejected:', error);
+      }
+    };
+
+    // Now proceed with other operations after permission is granted
+    // Attempt to unlock audio playback without blocking UI (mobile Safari sometimes delays resolution)
     setIsInterviewing(true);
     setIsLoading(true);
     initialQuestionReceivedRef.current = false; // Reset flag
@@ -240,7 +263,7 @@ export default function InterviewPage() {
     
     // Safety timeout: If we're still loading after 35 seconds, show fallback question
     // This prevents the UI from being stuck on "AI is thinking" indefinitely
-    const safetyTimeout = setTimeout(() => {
+    const safetyTimeout = setTimeout(async () => {
       if (!initialQuestionReceivedRef.current) {
         console.warn('Safety timeout triggered - showing fallback question (likely network issue)');
         initialQuestionReceivedRef.current = true; // Mark as handled
@@ -256,6 +279,7 @@ export default function InterviewPage() {
         
         // Speak the fallback question
         if (isAudioEnabled && speechSynthesisRef.current) {
+          await waitForAudioUnlock();
           setIsAISpeaking(true);
           speechSynthesisRef.current.speak(fallbackQuestion, () => {
             setIsAISpeaking(false);
@@ -346,6 +370,7 @@ export default function InterviewPage() {
 
         // Speak the initial question using AWS Polly
         if (isAudioEnabled && speechSynthesisRef.current) {
+          await waitForAudioUnlock();
           setIsAISpeaking(true);
           await speechSynthesisRef.current.speak(initialQuestion, () => {
             setIsAISpeaking(false);
@@ -399,6 +424,7 @@ export default function InterviewPage() {
           
           // Speak the fallback question
           if (isAudioEnabled && speechSynthesisRef.current) {
+            await waitForAudioUnlock();
             setIsAISpeaking(true);
             await speechSynthesisRef.current.speak(fallbackQuestion, () => {
               setIsAISpeaking(false);
@@ -431,6 +457,7 @@ export default function InterviewPage() {
 
         // Speak the fallback question
         if (isAudioEnabled && speechSynthesisRef.current) {
+          await waitForAudioUnlock();
           setIsAISpeaking(true);
           await speechSynthesisRef.current.speak(fallbackQuestion, () => {
             setIsAISpeaking(false);
