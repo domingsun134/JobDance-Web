@@ -217,13 +217,11 @@ export default function InterviewPage() {
     }
 
     // Now proceed with other operations after permission is granted
-    // Attempt to unlock audio playback
+    // Attempt to unlock audio playback without blocking UI (mobile Safari sometimes delays resolution)
     if (speechSynthesisRef.current) {
-      try {
-        await speechSynthesisRef.current.unlockAudio();
-      } catch (error) {
+      speechSynthesisRef.current.unlockAudio().catch((error) => {
         console.warn('Unable to unlock audio context before starting interview:', error);
-      }
+      });
     }
 
     setIsInterviewing(true);
