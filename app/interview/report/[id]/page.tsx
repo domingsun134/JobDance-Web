@@ -126,7 +126,19 @@ export default function InterviewReportPage() {
           .single();
 
         if (error) {
-          console.error('Error polling for report:', error);
+          // Only log meaningful errors (not "not found" which is expected during polling)
+          // Check if error has any meaningful properties
+          const hasErrorInfo = error.message || error.code || error.details || error.hint;
+          const isEmptyObject = Object.keys(error).length === 0;
+          
+          if (!isEmptyObject && hasErrorInfo && error.code !== 'PGRST116') {
+            console.error('Error polling for report:', {
+              message: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            });
+          }
           pollCount++;
           setTimeout(poll, pollInterval);
           return;
@@ -153,8 +165,14 @@ export default function InterviewReportPage() {
           pollCount++;
           setTimeout(poll, pollInterval);
         }
-      } catch (error) {
-        console.error('Error in poll:', error);
+      } catch (error: any) {
+        // Only log if error has meaningful information
+        if (error && (error.message || error.toString() !== '[object Object]')) {
+          console.error('Error in poll:', {
+            message: error?.message || 'Unknown error',
+            stack: error?.stack
+          });
+        }
         pollCount++;
         setTimeout(poll, pollInterval);
       }
