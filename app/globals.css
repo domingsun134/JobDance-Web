@@ -10,37 +10,36 @@
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
-  
+
   .glass-dark {
     background: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
-  
+
   .gradient-text {
     @apply bg-gradient-to-r from-primary-400 via-primary-500 to-primary-600 bg-clip-text text-transparent;
   }
-  
+
   .card-hover {
     @apply transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl;
   }
-  
+
   .shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.1) 50%,
-      rgba(255, 255, 255, 0) 100%
-    );
+    background: linear-gradient(90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0) 100%);
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }
-  
+
   @keyframes shimmer {
     0% {
       background-position: -200% 0;
     }
+
     100% {
       background-position: 200% 0;
     }
@@ -55,6 +54,7 @@
       opacity: 0;
       transform: translateY(10px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -81,6 +81,11 @@
 }
 
 :root {
+  --foreground-rgb: 17, 24, 39;
+  --background-rgb: 249, 250, 251;
+}
+
+.dark {
   --foreground-rgb: 255, 255, 255;
   --background-rgb: 17, 24, 39;
 }
@@ -102,6 +107,7 @@ body {
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
+  transition: color 0.3s, background-color 0.3s;
 }
 
 /* Mobile-first responsive design */
@@ -121,7 +127,8 @@ textarea {
 /* Ensure placeholder text is visible */
 input::placeholder,
 textarea::placeholder {
-  color: #6b7280 !important; /* gray-500 */
+  color: #6b7280 !important;
+  /* gray-500 */
   opacity: 1 !important;
 }
 
@@ -136,6 +143,7 @@ html {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -146,49 +154,62 @@ html {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
 }
 
 @keyframes barAnimationShort {
+
   /* At 0%: start at min */
   0% {
     height: 25%;
   }
+
   /* Smoothly expand */
   8% {
     height: 40%;
   }
+
   20% {
     height: 60%;
   }
+
   /* Reach peak */
   40% {
     height: 65%;
   }
+
   50% {
     height: 65%;
   }
+
   /* Smoothly contract */
   60% {
     height: 50%;
   }
+
   75% {
     height: 35%;
   }
+
   92% {
     height: 25%;
   }
+
   /* At 100%: back to min */
   100% {
     height: 25%;
@@ -196,41 +217,51 @@ html {
 }
 
 @keyframes barAnimationLong {
+
   /* At 0%: short bars at min (25%), long bars start expanding */
   0% {
     height: 25%;
   }
+
   /* Expand when short bars are at min */
   8% {
     height: 100%;
   }
+
   /* Stay at max longer while short bars expand */
   25% {
     height: 100%;
   }
+
   /* Slowly start retracting as short bars continue expanding */
   35% {
     height: 80%;
   }
+
   45% {
     height: 50%;
   }
+
   /* Gradually retract to min */
   55% {
     height: 30%;
   }
+
   /* Reach min while short bars are at max */
   60% {
     height: 25%;
   }
+
   /* Stay at min while short bars contract */
   75% {
     height: 25%;
   }
+
   /* Stay at min until short bars reach min again */
   92% {
     height: 25%;
   }
+
   /* At 100%: short bars at min (25%), long bars ready to expand again */
   100% {
     height: 25%;
@@ -321,4 +352,3 @@ input[type="checkbox"]:focus {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
-

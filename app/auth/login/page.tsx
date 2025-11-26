@@ -33,13 +33,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-4 sm:py-8 bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center px-4 py-4 sm:py-8 bg-gray-50 dark:bg-gradient-to-br dark:from-slate-950 dark:via-gray-900 dark:to-slate-950 relative overflow-hidden transition-colors duration-300">
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-0 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }}></div>
       </div>
-      
+
       <div className="w-full max-w-md relative z-10 animate-slide-in-up">
         {/* Logo and Welcome Section */}
         <div className="mb-8 sm:mb-10 text-center">
@@ -49,8 +49,8 @@ export default function LoginPage() {
           <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
             <Logo />
           </div>
-          <p className="text-gray-400 text-sm sm:text-base font-medium animate-fade-in mt-4 sm:mt-6" style={{ animationDelay: "0.3s" }}>
-            Sign in to continue your job search journey
+          <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base font-medium animate-fade-in mt-4 sm:mt-6" style={{ animationDelay: "0.3s" }}>
+            Your AI-powered career advisor
           </p>
         </div>
 
@@ -59,20 +59,20 @@ export default function LoginPage() {
         <div className="min-h-[200px] sm:min-h-[280px] relative">
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-red-300 text-sm animate-fade-in">
+            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-500/50 rounded-lg text-red-600 dark:text-red-300 text-sm animate-fade-in">
               {error}
             </div>
           )}
 
           {/* Email Login */}
           <form onSubmit={handleEmailSubmit} className="space-y-4 animate-fade-in">
-              <div>
+            <div>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base"
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base shadow-sm"
                 placeholder="Enter your email"
               />
             </div>
@@ -82,7 +82,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base"
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base shadow-sm"
                 placeholder="Enter your password"
               />
             </div>
@@ -91,9 +91,9 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 active:scale-95"
             >
-                {loading ? "Signing in..." : "Sign In"}
-              </button>
-            </form>
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
         </div>
 
         {/* Sign Up Link */}

@@ -59,16 +59,16 @@ export default function RegisterPage() {
   }, [router, successMessage]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-4 sm:py-8 bg-gray-900">
+    <div className="min-h-screen flex items-center justify-center px-4 py-4 sm:py-8 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="w-full max-w-md animate-slide-in-up">
         {/* Logo and Welcome Section */}
         <div className="mb-4 sm:mb-8 text-center">
-          <h1 className="text-2xl sm:text-4xl font-bold text-white mb-2 sm:mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
             Welcome to
           </h1>
           <Logo />
-          <p className="text-gray-400 text-xs sm:text-sm animate-fade-in mt-2 sm:mt-4" style={{ animationDelay: "0.2s" }}>
-            Create your account to start your job search journey
+          <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm animate-fade-in mt-2 sm:mt-4" style={{ animationDelay: "0.2s" }}>
+            Your AI-powered career advisor
           </p>
         </div>
 
@@ -77,80 +77,80 @@ export default function RegisterPage() {
         <div className="min-h-[240px] sm:min-h-[360px] relative">
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-red-300 text-sm animate-fade-in">
+            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-500/50 rounded-lg text-red-600 dark:text-red-300 text-sm animate-fade-in">
               {error}
             </div>
           )}
 
           {/* Success Message */}
           {successMessage && (
-            <div className="mb-4 p-3 bg-green-900/30 border border-green-500/50 rounded-lg text-green-300 text-sm animate-fade-in">
+            <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-500/50 rounded-lg text-green-600 dark:text-green-300 text-sm animate-fade-in">
               {successMessage}
             </div>
           )}
 
           {/* Email Register */}
           <form onSubmit={handleEmailSubmit} className="space-y-4 animate-fade-in">
-              <div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base"
-                  placeholder="Enter your email"
-                />
-              </div>
-              <div>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base"
-                  placeholder="Enter your password"
-                />
-              </div>
-              <div>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base"
-                  placeholder="Confirm your password"
-                />
-              </div>
-              
-              {/* Terms Acceptance Checkbox */}
-              <div className="flex items-start">
-                <input
-                  type="checkbox"
-                  id="acceptTerms"
-                  checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  className="mt-1 mr-2 flex-shrink-0"
-                />
-                <label htmlFor="acceptTerms" className="text-xs sm:text-sm text-gray-400 cursor-pointer">
-                  I agree to the{" "}
-                  <Link href="/terms" className="text-blue-400 hover:text-blue-300 underline">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link href="/privacy" className="text-blue-400 hover:text-blue-300 underline">
-                    Privacy Policy
-                  </Link>
-                </label>
-              </div>
+            <div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base shadow-sm"
+                placeholder="Enter your email"
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base shadow-sm"
+                placeholder="Enter your password"
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base shadow-sm"
+                placeholder="Confirm your password"
+              />
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading || !acceptedTerms || Boolean(successMessage)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 active:scale-95"
-              >
-                {loading ? "Creating account..." : "Create Account"}
-              </button>
-            </form>
+            {/* Terms Acceptance Checkbox */}
+            <div className="flex items-start">
+              <input
+                type="checkbox"
+                id="acceptTerms"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 mr-2 flex-shrink-0"
+              />
+              <label htmlFor="acceptTerms" className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+                I agree to the{" "}
+                <Link href="/terms" className="text-blue-400 hover:text-blue-300 underline">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 underline">
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !acceptedTerms || Boolean(successMessage)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 active:scale-95"
+            >
+              {loading ? "Creating account..." : "Create Account"}
+            </button>
+          </form>
         </div>
 
         {/* Sign In Link */}

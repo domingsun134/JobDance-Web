@@ -14,19 +14,24 @@ export const viewport: Viewport = {
   themeColor: "#0ea5e9",
 };
 
+import { ThemeProvider } from "@/components/ThemeProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-      </head>
-      <body className="min-h-screen bg-gray-900" suppressHydrationWarning>
-        {children}
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen" suppressHydrationWarning>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

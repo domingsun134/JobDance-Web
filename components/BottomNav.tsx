@@ -14,35 +14,29 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 glass-dark border-t border-white/5 z-50 safe-area-inset-bottom shadow-lg">
-      <div className="max-w-md mx-auto px-3">
-        <div className="flex justify-around items-center h-14">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href || 
-              (item.href === "/dashboard" && pathname === "/");
-            
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`relative flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 ${
-                  isActive
-                    ? "text-primary-400"
-                    : "text-gray-400 hover:text-gray-200"
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-white/5 z-50 transition-colors duration-300">
+      <div className="flex justify-around items-center p-2">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href ||
+            (item.href === "/dashboard" && pathname === "/");
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 ${isActive
+                  ? "text-primary-600 dark:text-primary-400"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
-              >
-                <div className={`p-1.5 rounded-lg transition-all ${isActive ? "bg-primary-500/20" : "hover:bg-gray-800/30"}`}>
-                  <Icon className={`text-lg transition-transform ${isActive ? "scale-105" : ""}`} />
-                </div>
-                <span className={`text-[10px] font-medium leading-tight ${isActive ? "text-primary-300" : "text-gray-500"}`}>{item.label}</span>
-                {isActive && (
-                  <div className="absolute -bottom-0.5 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-primary-400 rounded-full" />
-                )}
-              </Link>
-            );
-          })}
-        </div>
+            >
+              <div className={`p-1.5 rounded-lg transition-all ${isActive ? "bg-primary-500/10 dark:bg-primary-500/20" : ""}`}>
+                <Icon className={`text-xl ${isActive ? "scale-105" : ""}`} />
+              </div>
+              <span className="text-xs font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

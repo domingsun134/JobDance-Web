@@ -39,27 +39,27 @@ class RequestQueue {
 
   private async process() {
     if (this.processing || this.queue.length === 0) return;
-    
+
     this.processing = true;
-    
+
     while (this.queue.length > 0) {
       const now = Date.now();
       const timeSinceLastRequest = now - this.lastRequestTime;
-      
+
       // Use adaptive delay based on throttle history
       const delay = this.consecutiveThrottles > 0 ? this.minDelay * 1.5 : this.minDelay;
-      
+
       if (timeSinceLastRequest < delay) {
         await new Promise(resolve => setTimeout(resolve, delay - timeSinceLastRequest));
       }
-      
+
       const request = this.queue.shift();
       if (request) {
         this.lastRequestTime = Date.now();
         await request();
       }
     }
-    
+
     this.processing = false;
   }
 }
@@ -73,13 +73,13 @@ async function retryWithBackoff<T>(
   baseDelay = 1000
 ): Promise<T> {
   let lastError: any;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error: any) {
       lastError = error;
-      
+
       // Check if it's a throttling error
       if (error.name === 'ThrottlingException' || error.$metadata?.httpStatusCode === 429) {
         if (attempt < maxRetries) {
@@ -89,12 +89,12 @@ async function retryWithBackoff<T>(
           continue;
         }
       }
-      
+
       // For other errors, throw immediately
       throw error;
     }
   }
-  
+
   throw lastError;
 }
 
@@ -149,7 +149,7 @@ const getS3Client = () => {
 // 'Stephen' (US English, male), 'Amy' (British English, female), 'Emma' (British English, female)
 export async function synthesizeSpeech(text: string, voiceId: string = 'Ruth'): Promise<Buffer> {
   const client = getPollyClient();
-  
+
   // Use retry logic for Polly as well
   const response = await retryWithBackoff(async () => {
     const command = new SynthesizeSpeechCommand({
@@ -160,7 +160,7 @@ export async function synthesizeSpeech(text: string, voiceId: string = 'Ruth'): 
     });
     return await client.send(command);
   }, 3, 500); // 3 retries with 500ms base delay
-  
+
   if (!response.AudioStream) {
     throw new Error('No audio stream returned from Polly');
   }
@@ -170,7 +170,7 @@ export async function synthesizeSpeech(text: string, voiceId: string = 'Ruth'): 
   for await (const chunk of response.AudioStream as any) {
     chunks.push(chunk);
   }
-  
+
   return Buffer.concat(chunks);
 }
 
@@ -179,7 +179,7 @@ function calculateSimilarity(str1: string, str2: string): number {
   const words1 = str1.split(/\s+/).filter(w => w.length > 3); // Only meaningful words
   const words2 = str2.split(/\s+/).filter(w => w.length > 3);
   if (words1.length === 0 || words2.length === 0) return 0;
-  
+
   const intersection = words1.filter(word => words2.includes(word));
   const union = [...new Set([...words1, ...words2])];
   return intersection.length / union.length;
@@ -220,12 +220,12 @@ function generateNewQuestion(coveredTopics: string[], userText: string, userProf
     'why you want this role',
     'what you bring to the team'
   ];
-  
+
   const availableTopics = allTopics.filter(topic => {
     const topicKey = topic.toLowerCase();
     return !coveredTopics.some(covered => topicKey.includes(covered) || covered.includes(topicKey));
   });
-  
+
   if (userText.includes("don't have") || userText.includes("no experience")) {
     const questions = [
       "What interests you most about this field?",
@@ -235,7 +235,7 @@ function generateNewQuestion(coveredTopics: string[], userText: string, userProf
     ];
     return questions[Math.floor(Math.random() * questions.length)];
   }
-  
+
   if (userProfile) {
     if (userProfile.skills && userProfile.skills.length > 0 && !coveredTopics.includes('skills')) {
       return `I see you have skills in ${userProfile.skills.slice(0, 2).join(' and ')}. How did you develop these skills, and which one are you most passionate about?`;
@@ -245,12 +245,12 @@ function generateNewQuestion(coveredTopics: string[], userText: string, userProf
       return `I noticed you studied ${edu.field}. What motivated you to choose this field, and how has your education prepared you for your career?`;
     }
   }
-  
+
   if (availableTopics.length > 0) {
     const topic = availableTopics[0];
     return `Let's shift gears. Can you tell me about ${topic}?`;
   }
-  
+
   return "That's helpful context. Can you tell me about a time when you had to learn something new quickly?";
 }
 
@@ -273,7 +273,7 @@ export async function getAIResponse(
 
   // Build context from user profile
   let systemPrompt = '';
-  
+
   if (isClosing) {
     // Special prompt for closing statement
     systemPrompt = `You are a professional interview coach concluding a job interview practice session. The candidate has just completed answering all interview questions.
@@ -291,7 +291,7 @@ Example: "Thank you so much for taking the time to participate in this interview
 Do NOT ask any more questions. This is the closing statement only.`;
   } else {
     // Add special instruction for first question
-    const firstQuestionInstruction = isFirstQuestion 
+    const firstQuestionInstruction = isFirstQuestion
       ? `\n\n🚨 CRITICAL - THIS IS THE FIRST QUESTION OF THE INTERVIEW:
 - You MUST start with a warm, friendly greeting (e.g., "Hello!", "Hi there!", "Nice to meet you!", "Welcome!")
 - DO NOT start with "Great to hear", "That's interesting", or any acknowledgment phrases - this is the opening greeting, not a response to something
@@ -381,7 +381,7 @@ Remember:
 
   try {
     const body = JSON.stringify(prompt);
-    
+
     // Use queue and retry logic to handle rate limiting
     const response = await bedrockQueue.add(async () => {
       return await retryWithBackoff(async () => {
@@ -396,43 +396,43 @@ Remember:
         return await client.send(command);
       }, 3, 1000); // 3 retries with 1s base delay (additional to SDK retries)
     });
-    
+
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    
+
     const aiResponse = responseBody.content[0].text.trim();
-    
+
     // Get the last user message to check context
     const lastUserMessage = messages.filter(m => m.role === 'user').pop();
     const userText = lastUserMessage?.content?.toLowerCase() || '';
-    
+
     // Extract previous questions for repetition check
     const previousQuestionsForCheck = messages
       .filter(m => m.role === 'assistant')
       .map(m => m.content)
       .slice(-5);
-    
+
     // Check if AI is repeating a previous question
     const isRepeating = previousQuestionsForCheck.some(prevQ => {
       const similarity = calculateSimilarity(aiResponse.toLowerCase(), prevQ.toLowerCase());
       return similarity > 0.7; // 70% similarity threshold
     });
-    
+
     if (isRepeating) {
       // Generate a different question based on conversation context
       const conversationTopics = extractTopics(messages);
       return generateNewQuestion(conversationTopics, userText, userProfile);
     }
-    
+
     // Check if user said they don't have experience or something negative
-    const hasNegativeResponse = userText.includes("don't have") || 
-                               userText.includes("don't") || 
-                               userText.includes("no experience") ||
-                               userText.includes("not sure") ||
-                               userText.includes("i don't");
-    
+    const hasNegativeResponse = userText.includes("don't have") ||
+      userText.includes("don't") ||
+      userText.includes("no experience") ||
+      userText.includes("not sure") ||
+      userText.includes("i don't");
+
     // If response contradicts a negative user statement, fix it
-    if (hasNegativeResponse && (aiResponse.toLowerCase().includes("that's interesting") || 
-                                aiResponse.toLowerCase().includes("tell me more about that experience"))) {
+    if (hasNegativeResponse && (aiResponse.toLowerCase().includes("that's interesting") ||
+      aiResponse.toLowerCase().includes("tell me more about that experience"))) {
       // Create an appropriate response that acknowledges lack of experience
       if (userText.includes("experience")) {
         return "I understand. Everyone starts somewhere! What interests you about this field, or what skills are you looking to develop?";
@@ -442,7 +442,7 @@ Remember:
         return "That's okay. Can you tell me about related experiences or skills you do have that might be transferable?";
       }
     }
-    
+
     // Ensure the response is conversational and references the user's answer
     // If the response is too generic, enhance it
     if (aiResponse.length < 20 || (aiResponse.toLowerCase().includes("that's interesting") && !aiResponse.includes("specifically"))) {
@@ -451,11 +451,11 @@ Remember:
         return `I'd love to hear more about that. Can you share a specific example or tell me more details about what you mentioned?`;
       }
     }
-    
+
     return aiResponse;
   } catch (error: any) {
     console.error('Bedrock error:', error);
-    
+
     // Handle throttling with user-friendly message
     if (error.name === 'ThrottlingException' || error.$metadata?.httpStatusCode === 429) {
       console.warn('Rate limited, using fallback response');
@@ -463,15 +463,15 @@ Remember:
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
       if (lastUserMessage) {
         const userText = lastUserMessage.content?.toLowerCase() || '';
-        
+
         if (userText.includes("don't have") || userText.includes("no experience") || userText.includes("i don't")) {
           return "I understand. Everyone starts somewhere! What interests you about this field, or what skills are you looking to develop?";
         }
-        
+
         if (userText.includes("not sure")) {
           return "No problem. Let me rephrase - what aspects of your background do you think are most relevant to this role?";
         }
-        
+
         // Extract key topic from user's message for context
         if (userText.includes("project")) {
           return "That's interesting! Can you tell me more about that project and what you learned from it?";
@@ -482,28 +482,99 @@ Remember:
         if (userText.includes("skill")) {
           return "That's valuable! How did you develop that skill, and how have you applied it?";
         }
-        
+
         return `That sounds really interesting! Can you tell me more about that?`;
       }
     }
-    
+
     // Fallback that's still conversational and context-aware
     const lastUserMessage = messages.filter(m => m.role === 'user').pop();
     if (lastUserMessage) {
       const userText = lastUserMessage.content?.toLowerCase() || '';
-      
+
       // Check for negative responses
       if (userText.includes("don't have") || userText.includes("no experience") || userText.includes("i don't")) {
         return "I understand. Everyone starts somewhere! What interests you about this field, or what skills are you looking to develop?";
       }
-      
+
       if (userText.includes("not sure")) {
         return "No problem. Let me rephrase - what aspects of your background do you think are most relevant to this role?";
       }
-      
+
       return `That sounds really interesting! Can you tell me more about that?`;
     }
     return "That's interesting. Can you tell me more about that?";
+  }
+}
+
+// Validate user answer using AWS Bedrock
+export async function validateAnswerWithAI(
+  question: string,
+  answer: string
+): Promise<{ isValid: boolean; feedback?: string }> {
+  const client = getBedrockClient();
+
+  const systemPrompt = `You are an interview judge. Your task is to determine if a candidate's answer is a valid attempt to respond to the interview question.
+
+CRITICAL RULES:
+1. "Valid" means the answer is related to the question OR is a reasonable attempt to answer.
+2. "Invalid" means the answer is:
+   - Completely irrelevant (e.g., "testing testing", "hello", "can you hear me")
+   - Gibberish or non-words
+   - Too short to be meaningful (e.g., "yes", "no" without context, unless the question is a yes/no question)
+   - A technical issue statement (e.g., "my microphone isn't working")
+3. If the answer is "I don't know" or "I have no experience", this IS VALID. We want to accept honest answers.
+4. If the answer is short but relevant, it IS VALID.
+
+Return a JSON object with:
+- isValid: boolean
+- feedback: string (If invalid, provide a short, encouraging 1-sentence prompt to ask the user to try again. If valid, leave empty or null.)`;
+
+  const prompt = {
+    anthropic_version: 'bedrock-2023-05-31',
+    max_tokens: 300,
+    system: systemPrompt,
+    messages: [
+      {
+        role: 'user',
+        content: `Question: "${question}"\nCandidate Answer: "${answer}"\n\nIs this a valid answer?`
+      }
+    ],
+  };
+
+  try {
+    const body = JSON.stringify(prompt);
+
+    // Use queue and retry logic
+    const response = await bedrockQueue.add(async () => {
+      return await retryWithBackoff(async () => {
+        const command = new InvokeModelCommand({
+          modelId: 'us.anthropic.claude-3-5-sonnet-20240620-v1:0',
+          contentType: 'application/json',
+          accept: 'application/json',
+          body: new TextEncoder().encode(body),
+        });
+        return await client.send(command);
+      }, 3, 1000);
+    });
+
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    const text = responseBody.content[0].text.trim();
+
+    // Extract JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+
+    // Fallback if JSON parsing fails
+    console.warn('Failed to parse validation JSON, defaulting to valid');
+    return { isValid: true };
+
+  } catch (error) {
+    console.error('Error validating answer:', error);
+    // Default to valid on error to prevent blocking the user
+    return { isValid: true };
   }
 }
 
@@ -662,10 +733,10 @@ Total Answers Provided: ${fullConversation.filter(m => m.role === 'user').length
 
 Candidate Background:
 ${userProfile ? JSON.stringify({
-  workExperience: userProfile.workExperience?.map((exp: any) => `${exp.position} at ${exp.company}`) || [],
-  education: userProfile.education?.map((edu: any) => `${edu.degree} in ${edu.field}`) || [],
-  skills: userProfile.skills || []
-}) : 'Not provided'}
+          workExperience: userProfile.workExperience?.map((exp: any) => `${exp.position} at ${exp.company}`) || [],
+          education: userProfile.education?.map((edu: any) => `${edu.degree} in ${edu.field}`) || [],
+          skills: userProfile.skills || []
+        }) : 'Not provided'}
 
 FULL CONVERSATION HISTORY (Questions and Answers paired together):
 ${formattedSummary}
@@ -701,7 +772,7 @@ Generate a comprehensive, FAIR report that evaluates answers in the context of t
 
   try {
     const body = JSON.stringify(prompt);
-    
+
     // Use queue and retry logic to handle rate limiting
     const response = await bedrockQueue.add(async () => {
       return await retryWithBackoff(async () => {
@@ -716,17 +787,17 @@ Generate a comprehensive, FAIR report that evaluates answers in the context of t
         return await client.send(command);
       }, 3, 1000); // 3 retries with 1s base delay (additional to SDK retries)
     });
-    
+
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    
+
     const reportText = responseBody.content[0].text.trim();
-    
+
     // Try to extract JSON from the response
     const jsonMatch = reportText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
     }
-    
+
     // If no JSON found, return a structured default
     return {
       overallPerformance: {
@@ -763,7 +834,7 @@ Generate a comprehensive, FAIR report that evaluates answers in the context of t
     };
   } catch (error: any) {
     console.error('Error generating report:', error);
-    
+
     // Handle throttling - return a basic report structure
     if (error.name === 'ThrottlingException' || error.$metadata?.httpStatusCode === 429) {
       console.warn('Rate limited during report generation, returning basic report');
@@ -771,7 +842,7 @@ Generate a comprehensive, FAIR report that evaluates answers in the context of t
       const userAnswers = messages.filter(m => m.role === 'user').map(m => m.content);
       const totalAnswers = userAnswers.length;
       const avgAnswerLength = userAnswers.reduce((sum, ans) => sum + ans.length, 0) / totalAnswers || 0;
-      
+
       return {
         overallPerformance: {
           score: Math.min(75, Math.max(50, Math.floor(avgAnswerLength / 10))),
@@ -818,7 +889,7 @@ Generate a comprehensive, FAIR report that evaluates answers in the context of t
         considerations: ["Continue practicing to improve interview skills"]
       };
     }
-    
+
     throw error;
   }
 }
@@ -833,7 +904,7 @@ export async function uploadVideoToS3(
   const bucketName = process.env.AWS_S3_BUCKET_NAME || '';
 
   const key = `interviews/${userId}/${sessionId}-${Date.now()}.webm`;
-  
+
   const arrayBuffer = await videoBlob.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
@@ -855,4 +926,121 @@ export async function uploadVideoToS3(
   const url = await getSignedUrl(client, getCommand, { expiresIn: 3600 * 24 * 7 }); // 7 days
 
   return url;
+}
+
+// Chat with Resume Builder AI
+// Returns both the AI response text and any extracted profile data updates
+export async function chatWithResumeBuilder(
+  messages: Array<{ role: string; content: string }>,
+  currentProfile: any
+): Promise<{ response: string; extractedData?: any }> {
+  const client = getBedrockClient();
+
+  const systemPrompt = `You are an expert Resume Builder AI. Your goal is to help the user build a professional resume by asking them questions and extracting structured data from their answers.
+
+CURRENT PROFILE DATA:
+${JSON.stringify(currentProfile, null, 2)}
+
+YOUR RESPONSIBILITIES:
+1.  **Analyze** the user's latest message and the conversation history.
+2.  **Extract** any new information relevant to a resume (Work Experience, Education, Skills, Languages).
+3.  **Update** the profile data structure if new information is found.
+4.  **Ask** the next logical question to gather missing information.
+
+DATA STRUCTURE FOR EXTRACTION (JSON):
+{
+  "personalInfo": {
+    "fullName": "string",
+    "email": "string",
+    "phone": "string",
+    "location": "string",
+    "linkedin": "string",
+    "portfolio": "string"
+  },
+  "workExperience": [
+    { "company": "string", "position": "string", "startDate": "YYYY-MM", "endDate": "YYYY-MM", "current": boolean, "description": "string" }
+  ],
+  "education": [
+    { "institution": "string", "degree": "string", "field": "string", "startDate": "YYYY-MM", "endDate": "YYYY-MM", "current": boolean }
+  ],
+  "skills": ["string"],
+  "languages": [
+    { "name": "string", "proficiency": "basic" | "intermediate" | "advanced" | "native" }
+  ]
+}
+
+INTERACTION GUIDELINES:
+-   Start by asking for their full name and contact details if missing.
+-   Then move to work experience, education, etc.
+-   Be helpful and professional.
+-   If the user says "I'm done" or "That's all", ask if they want to review or add anything else.
+
+OUTPUT FORMAT:
+You must return a JSON object with two fields:
+1.  "response": Your conversational response to the user (string).
+2.  "extractedData": The structured data extracted from the *latest* user input. Only include fields that have *changed* or *added* data.
+
+EXAMPLE OUTPUT:
+{
+  "response": "Great! I've added your role at Google. When did you start working there?",
+  "extractedData": {
+    "workExperience": [{ "company": "Google", "position": "Software Engineer" }]
+  }
+}
+
+CRITICAL INSTRUCTIONS:
+-   You MUST return a valid JSON object.
+-   Do NOT output any text outside the JSON object.
+-   Do NOT use markdown formatting (no \`\`\`json tags).
+-   If you have no new data to extract, return "extractedData": {}.
+-   Dates MUST be in YYYY-MM-DD or YYYY-MM format. If only year is known, use YYYY-01-01.
+`;
+
+  const prompt = {
+    anthropic_version: 'bedrock-2023-05-31',
+    max_tokens: 1000,
+    system: systemPrompt,
+    messages: messages.map(msg => ({
+      role: msg.role === 'assistant' ? 'assistant' : 'user',
+      content: msg.content,
+    })),
+  };
+
+  try {
+    const body = JSON.stringify(prompt);
+
+    const response = await bedrockQueue.add(async () => {
+      return await retryWithBackoff(async () => {
+        const command = new InvokeModelCommand({
+          modelId: 'us.anthropic.claude-3-5-sonnet-20240620-v1:0',
+          contentType: 'application/json',
+          accept: 'application/json',
+          body: new TextEncoder().encode(body),
+        });
+        return await client.send(command);
+      }, 3, 1000);
+    });
+
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    const text = responseBody.content[0].text.trim();
+
+    // Parse JSON response
+    try {
+      // Find JSON object in the text (in case of extra whitespace or text)
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      } else {
+        console.warn("Could not find JSON in Resume Builder response:", text);
+        return { response: text, extractedData: null }; // Fallback
+      }
+    } catch (e) {
+      console.error("Failed to parse Resume Builder JSON:", e);
+      return { response: "I'm having trouble processing that. Could you try again?", extractedData: null };
+    }
+
+  } catch (error) {
+    console.error('Resume Builder Bedrock error:', error);
+    throw error;
+  }
 }
