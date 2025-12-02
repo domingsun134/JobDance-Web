@@ -7,6 +7,7 @@ import { getCurrentUser, getUserProfile, logoutUser, type User, type UserProfile
 import { FiLogOut, FiBriefcase, FiBook, FiCode, FiGlobe, FiCalendar, FiDollarSign, FiEdit3 } from "react-icons/fi";
 import { formatDateRange } from "@/lib/utils";
 import BottomNav from "@/components/BottomNav";
+import Sidebar from "@/components/Sidebar";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -53,14 +54,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col px-3 py-2 pb-20 bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 relative overflow-hidden">
+    <div className="h-screen flex flex-col px-3 py-2 pb-20 bg-gray-50 dark:bg-gradient-to-br dark:from-slate-950 dark:via-gray-900 dark:to-slate-950 relative overflow-hidden transition-colors duration-300">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 -left-4 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-0 -right-4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }}></div>
       </div>
-      
-      <div className="max-w-5xl mx-auto w-full h-full flex flex-col relative z-10 overflow-hidden">
+
+      <Sidebar />
+
+      <div className="max-w-5xl mx-auto w-full h-full flex flex-col relative z-10 overflow-hidden md:pl-64 transition-all duration-300">
         {/* Compact Header */}
         <div className="glass-dark rounded-xl shadow-lg p-3 mb-2 border border-white/10 flex-shrink-0">
           <div className="flex justify-between items-center">

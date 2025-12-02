@@ -113,6 +113,14 @@ export default function OnboardingPage() {
     setLoading(true);
     try {
       const profile: UserProfile = {
+        personalInfo: {
+          fullName: "",
+          email: "",
+          phone: "",
+          location: "",
+          linkedin: "",
+          portfolio: "",
+        },
         workExperience: workExperiences,
         education: educations,
         skills,

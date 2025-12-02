@@ -9,7 +9,17 @@ export interface User {
   profile?: UserProfile;
 }
 
+export interface PersonalInfo {
+  fullName: string;
+  email: string;
+  phone: string;
+  location: string;
+  linkedin: string;
+  portfolio: string;
+}
+
 export interface UserProfile {
+  personalInfo: PersonalInfo;
   workExperience: WorkExperience[];
   education: Education[];
   skills: string[];
@@ -76,23 +86,23 @@ export async function registerUser(email: string, password: string): Promise<Use
   let profile = null;
   let profileError = null;
   const maxRetries = 3;
-  
+
   for (let i = 0; i < maxRetries; i++) {
     await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
-    
+
     const { data, error } = await supabase
       .from('user_profiles')
       .select('onboarding_completed')
       .eq('id', authData.user.id)
       .single();
-    
+
     if (data && !error) {
       profile = data;
       break;
     }
-    
+
     profileError = error;
-    
+
     // If it's not a "not found" error, break early
     if (error && error.code !== 'PGRST116') {
       break;
@@ -192,7 +202,7 @@ export async function getCurrentUser(): Promise<User | null> {
 // Update user profile
 export async function updateUserProfile(profile: UserProfile): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
-  
+
   if (!user) {
     throw new Error("User not logged in");
   }
@@ -249,14 +259,16 @@ export async function updateUserProfile(profile: UserProfile): Promise<void> {
         if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return dateStr;
         // If in YYYY-MM format, append -01
         if (dateStr.match(/^\d{4}-\d{2}$/)) return `${dateStr}-01`;
+        // If in YYYY format, append -01-01
+        if (dateStr.match(/^\d{4}$/)) return `${dateStr}-01-01`;
         return dateStr;
       };
 
       return {
         user_id: user.id,
         company: exp.company,
-        position: exp.position,
-        start_date: formatDate(exp.startDate),
+        position: exp.position || "Title Pending",
+        start_date: formatDate(exp.startDate) || new Date().toISOString().split('T')[0],
         end_date: exp.endDate ? formatDate(exp.endDate) : null,
         current: exp.current,
         description: exp.description || null,
@@ -282,15 +294,17 @@ export async function updateUserProfile(profile: UserProfile): Promise<void> {
         if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return dateStr;
         // If in YYYY-MM format, append -01
         if (dateStr.match(/^\d{4}-\d{2}$/)) return `${dateStr}-01`;
+        // If in YYYY format, append -01-01
+        if (dateStr.match(/^\d{4}$/)) return `${dateStr}-01-01`;
         return dateStr;
       };
 
       return {
         user_id: user.id,
         institution: edu.institution,
-        degree: edu.degree,
-        field: edu.field,
-        start_date: formatDate(edu.startDate),
+        degree: edu.degree || "Degree Pending",
+        field: edu.field || "Field Pending",
+        start_date: formatDate(edu.startDate) || new Date().toISOString().split('T')[0],
         end_date: edu.endDate ? formatDate(edu.endDate) : null,
         current: edu.current,
       };
@@ -383,22 +397,46 @@ export async function updateUserProfile(profile: UserProfile): Promise<void> {
 // Get user profile with all data
 export async function getUserProfile(): Promise<UserProfile | null> {
   const { data: { user } } = await supabase.auth.getUser();
-  
+
   if (!user) {
     return null;
   }
 
-  // Fetch all profile data in parallel
-  const [workExpResult, educationResult, skillsResult, languagesResult, availabilityResult, salaryResult] = await Promise.all([
+  // Fetch profile data
+  const [workExpResult, educationResult, skillsResult, languagesResult] = await Promise.all([
     supabase.from('work_experience').select('*').eq('user_id', user.id),
     supabase.from('education').select('*').eq('user_id', user.id),
     supabase.from('skills').select('*').eq('user_id', user.id),
     supabase.from('languages').select('*').eq('user_id', user.id),
-    supabase.from('availability').select('*').eq('user_id', user.id).single(),
-    supabase.from('expected_salary').select('*').eq('user_id', user.id).single(),
   ]);
 
+  // Fetch optional data separately to handle missing tables gracefully
+  let availabilityData = null;
+  let salaryData = null;
+
+  try {
+    const { data } = await supabase.from('availability').select('*').eq('user_id', user.id).single();
+    availabilityData = data;
+  } catch (e) {
+    // Ignore error if table doesn't exist
+  }
+
+  try {
+    const { data } = await supabase.from('expected_salary').select('*').eq('user_id', user.id).single();
+    salaryData = data;
+  } catch (e) {
+    // Ignore error if table doesn't exist
+  }
+
   return {
+    personalInfo: {
+      fullName: user.user_metadata?.full_name || '',
+      email: user.email || '',
+      phone: user.user_metadata?.phone || '',
+      location: user.user_metadata?.location || '',
+      linkedin: user.user_metadata?.linkedin || '',
+      portfolio: user.user_metadata?.portfolio || '',
+    },
     workExperience: (workExpResult.data || []).map(exp => ({
       id: exp.id,
       company: exp.company,
@@ -423,13 +461,13 @@ export async function getUserProfile(): Promise<UserProfile | null> {
       proficiency: lang.proficiency as Language['proficiency'],
     })),
     availability: {
-      startDate: availabilityResult.data?.start_date || '',
-      duration: availabilityResult.data?.duration || '',
+      startDate: availabilityData?.start_date || '',
+      duration: availabilityData?.duration || '',
     },
-    expectedSalary: salaryResult.data ? {
-      amount: parseFloat(salaryResult.data.amount.toString()),
-      currency: salaryResult.data.currency,
-      period: salaryResult.data.period as Salary['period'],
+    expectedSalary: salaryData ? {
+      amount: parseFloat(salaryData.amount.toString()),
+      currency: salaryData.currency,
+      period: salaryData.period as Salary['period'],
     } : {
       amount: 0,
       currency: 'USD',
