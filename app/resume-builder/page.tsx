@@ -359,7 +359,7 @@ export default function ResumeBuilderPage() {
             heightLeft -= contentHeightPerPage;
 
             // Add subsequent pages if content overflows
-            while (heightLeft >= 0) {
+            while (heightLeft > 0) {
                 position = heightLeft - imgHeight; // Shift image up
                 pdf.addPage();
                 pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
