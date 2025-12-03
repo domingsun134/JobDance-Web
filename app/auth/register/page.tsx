@@ -59,32 +59,48 @@ export default function RegisterPage() {
   }, [router, successMessage]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-4 sm:py-8 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      <div className="w-full max-w-md animate-slide-in-up">
+    <div className="min-h-screen flex items-center justify-center px-4 py-4 sm:py-8 bg-black relative overflow-hidden">
+      {/* Animated background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20" />
+
+      {/* Animated grid pattern */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+                           linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)`,
+          backgroundSize: '50px 50px'
+        }} />
+      </div>
+
+      {/* Floating orbs */}
+      <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '10s' }} />
+
+      <div className="w-full max-w-md relative z-10 animate-slide-in-up">
         {/* Logo and Welcome Section */}
         <div className="mb-4 sm:mb-8 text-center">
-          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+          <h1 className="text-2xl sm:text-4xl font-bold text-white mb-2 sm:mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
             Welcome to
           </h1>
           <Logo />
-          <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm animate-fade-in mt-2 sm:mt-4" style={{ animationDelay: "0.2s" }}>
+          <p className="text-gray-400 text-xs sm:text-sm animate-fade-in mt-2 sm:mt-4" style={{ animationDelay: "0.2s" }}>
             Your AI-powered career advisor
           </p>
         </div>
 
 
-        {/* Form Content Container - Fixed height to prevent layout shift */}
-        <div className="min-h-[240px] sm:min-h-[360px] relative">
+        {/* Form Content Container */}
+        <div className="min-h-[240px] sm:min-h-[360px] relative p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl">
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-500/50 rounded-lg text-red-600 dark:text-red-300 text-sm animate-fade-in">
+            <div className="mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-red-300 text-sm animate-fade-in">
               {error}
             </div>
           )}
 
           {/* Success Message */}
           {successMessage && (
-            <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-500/50 rounded-lg text-green-600 dark:text-green-300 text-sm animate-fade-in">
+            <div className="mb-4 p-3 bg-green-900/30 border border-green-500/50 rounded-lg text-green-300 text-sm animate-fade-in">
               {successMessage}
             </div>
           )}
@@ -97,7 +113,7 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base shadow-sm"
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base"
                 placeholder="Enter your email"
               />
             </div>
@@ -107,7 +123,7 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base shadow-sm"
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base"
                 placeholder="Enter your password"
               />
             </div>
@@ -117,7 +133,7 @@ export default function RegisterPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base shadow-sm"
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base"
                 placeholder="Confirm your password"
               />
             </div>
@@ -129,15 +145,15 @@ export default function RegisterPage() {
                 id="acceptTerms"
                 checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="mt-1 mr-2 flex-shrink-0"
+                className="mt-1 mr-2 flex-shrink-0 accent-purple-500"
               />
-              <label htmlFor="acceptTerms" className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+              <label htmlFor="acceptTerms" className="text-xs sm:text-sm text-gray-400 cursor-pointer">
                 I agree to the{" "}
-                <Link href="/terms" className="text-blue-400 hover:text-blue-300 underline">
+                <Link href="/terms" className="text-purple-400 hover:text-purple-300 underline">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 underline">
+                <Link href="/privacy" className="text-purple-400 hover:text-purple-300 underline">
                   Privacy Policy
                 </Link>
               </label>
@@ -146,7 +162,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading || !acceptedTerms || Boolean(successMessage)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 active:scale-95"
+              className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 active:scale-95"
             >
               {loading ? "Creating account..." : "Create Account"}
             </button>
@@ -156,7 +172,7 @@ export default function RegisterPage() {
         {/* Sign In Link */}
         <Link
           href="/auth/login"
-          className="block w-full bg-blue-600 hover:bg-blue-700 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-medium text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 active:scale-95 animate-fade-in mt-2 sm:mt-4"
+          className="block w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-medium text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 animate-fade-in mt-4"
           style={{ animationDelay: "0.5s" }}
         >
           <span>Already have an account? Sign in</span>
@@ -165,17 +181,7 @@ export default function RegisterPage() {
           </svg>
         </Link>
 
-        {/* Footer */}
-        <p className="mt-4 sm:mt-8 text-center text-xs text-gray-500 animate-fade-in" style={{ animationDelay: "0.6s" }}>
-          By continuing, you agree to our{" "}
-          <Link href="/terms" className="text-blue-400 hover:text-blue-300 underline">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="/privacy" className="text-blue-400 hover:text-blue-300 underline">
-            Privacy Policy
-          </Link>
-        </p>
+
       </div>
     </div>
   );

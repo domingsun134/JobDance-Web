@@ -89,17 +89,10 @@ export function CTA() {
                                         whileTap={{ scale: 0.95 }}
                                         className="px-10 py-5 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-full text-lg flex items-center justify-center gap-3 group"
                                     >
-                                        Start Your Free Trial
+                                        Get Started
                                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                     </motion.button>
                                 </Link>
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    className="px-10 py-5 bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-full text-lg hover:bg-white/20 transition-all"
-                                >
-                                    Schedule a Demo
-                                </motion.button>
                             </motion.div>
                         </motion.div>
                     </div>

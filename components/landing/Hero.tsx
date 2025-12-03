@@ -129,18 +129,10 @@ export function Hero() {
                                 whileTap={{ scale: 0.95 }}
                                 className="px-10 py-4 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-full text-lg flex items-center gap-3 group"
                             >
-                                Start Free Trial
+                                Get Started
                                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                             </motion.button>
                         </Link>
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="px-10 py-4 bg-white/5 backdrop-blur-xl border border-white/10 text-white rounded-full text-lg flex items-center gap-3 hover:bg-white/10 transition-all"
-                        >
-                            <Play className="w-5 h-5" />
-                            Watch Demo
-                        </motion.button>
                     </motion.div>
 
                     {/* Stats */}
