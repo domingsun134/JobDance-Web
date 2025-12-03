@@ -57,18 +57,33 @@ export default function ResumePreview({ profile }: ResumePreviewProps) {
                 <div className="mb-6">
                     <h2 className="text-lg font-bold uppercase border-b border-gray-300 mb-3 pb-1">Experience</h2>
                     <div className="space-y-4">
-                        {profile.workExperience.map((exp, index) => (
-                            <div key={index}>
-                                <div className="flex justify-between items-baseline mb-1">
-                                    <h3 className="font-bold text-md">{exp.position}</h3>
-                                    <span className="text-sm text-gray-600">
-                                        {exp.startDate} – {exp.current ? 'Present' : exp.endDate}
-                                    </span>
+                        {[...profile.workExperience]
+                            .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+                            .map((exp, index) => (
+                                <div key={index}>
+                                    <div className="flex justify-between items-baseline mb-1">
+                                        <h3 className="font-bold text-md">{exp.position}</h3>
+                                        <span className="text-sm text-gray-600">
+                                            {exp.startDate} – {exp.current ? 'Present' : exp.endDate}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm font-semibold text-gray-700 mb-1">{exp.company}</div>
+                                    <div className="text-sm text-gray-600">
+                                        {exp.description.split('\n').map((line, i) => {
+                                            const trimmedLine = line.trim();
+                                            if (!trimmedLine) return null;
+                                            // Remove existing bullet points if present to avoid double bullets
+                                            const content = trimmedLine.replace(/^[-•*]\s*/, '');
+                                            return (
+                                                <div key={i} className="flex items-start mb-1">
+                                                    <span className="mr-2">•</span>
+                                                    <span>{content}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                                <div className="text-sm font-semibold text-gray-700 mb-1">{exp.company}</div>
-                                <p className="text-sm text-gray-600 whitespace-pre-line">{exp.description}</p>
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 </div>
             )}
@@ -78,19 +93,21 @@ export default function ResumePreview({ profile }: ResumePreviewProps) {
                 <div className="mb-6">
                     <h2 className="text-lg font-bold uppercase border-b border-gray-300 mb-3 pb-1">Education</h2>
                     <div className="space-y-3">
-                        {profile.education.map((edu, index) => (
-                            <div key={index}>
-                                <div className="flex justify-between items-baseline mb-1">
-                                    <h3 className="font-bold text-md">{edu.institution}</h3>
-                                    <span className="text-sm text-gray-600">
-                                        {edu.startDate} – {edu.current ? 'Present' : edu.endDate}
-                                    </span>
+                        {[...profile.education]
+                            .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+                            .map((edu, index) => (
+                                <div key={index}>
+                                    <div className="flex justify-between items-baseline mb-1">
+                                        <h3 className="font-bold text-md">{edu.institution}</h3>
+                                        <span className="text-sm text-gray-600">
+                                            {edu.startDate} – {edu.current ? 'Present' : edu.endDate}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-gray-700">
+                                        {edu.degree} in {edu.field}
+                                    </div>
                                 </div>
-                                <div className="text-sm text-gray-700">
-                                    {edu.degree} in {edu.field}
-                                </div>
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 </div>
             )}

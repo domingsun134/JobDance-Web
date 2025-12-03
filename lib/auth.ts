@@ -241,6 +241,30 @@ export async function updateUserProfile(profile: UserProfile): Promise<void> {
     }
   }
 
+  // Update user metadata (Personal Info) - NOW SAVING TO user_profiles TABLE
+  if (profile.personalInfo) {
+    console.log("Updating user_profiles with:", profile.personalInfo);
+
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({
+        full_name: profile.personalInfo.fullName,
+        phone: profile.personalInfo.phone,
+        location: profile.personalInfo.location,
+        linkedin: profile.personalInfo.linkedin,
+        portfolio: profile.personalInfo.portfolio,
+      })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error("Failed to update user_profiles:", updateError);
+    } else {
+      console.log("user_profiles updated successfully");
+    }
+  } else {
+    console.warn("No personal info to update in profile");
+  }
+
   // Delete existing data
   await supabase.from('work_experience').delete().eq('user_id', user.id);
   await supabase.from('education').delete().eq('user_id', user.id);
@@ -403,6 +427,13 @@ export async function getUserProfile(): Promise<UserProfile | null> {
   }
 
   // Fetch profile data
+  // We now fetch personal info columns from user_profiles as well
+  const { data: userProfileData, error: userProfileError } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
   const [workExpResult, educationResult, skillsResult, languagesResult] = await Promise.all([
     supabase.from('work_experience').select('*').eq('user_id', user.id),
     supabase.from('education').select('*').eq('user_id', user.id),
@@ -430,12 +461,13 @@ export async function getUserProfile(): Promise<UserProfile | null> {
 
   return {
     personalInfo: {
-      fullName: user.user_metadata?.full_name || '',
+      // Prioritize data from user_profiles table, fallback to auth metadata if empty (migration path)
+      fullName: userProfileData?.full_name || user.user_metadata?.full_name || '',
       email: user.email || '',
-      phone: user.user_metadata?.phone || '',
-      location: user.user_metadata?.location || '',
-      linkedin: user.user_metadata?.linkedin || '',
-      portfolio: user.user_metadata?.portfolio || '',
+      phone: userProfileData?.phone || user.user_metadata?.phone || '',
+      location: userProfileData?.location || user.user_metadata?.location || '',
+      linkedin: userProfileData?.linkedin || user.user_metadata?.linkedin || '',
+      portfolio: userProfileData?.portfolio || user.user_metadata?.portfolio || '',
     },
     workExperience: (workExpResult.data || []).map(exp => ({
       id: exp.id,
