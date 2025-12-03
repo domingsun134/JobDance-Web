@@ -177,8 +177,8 @@ export default function InterviewPage() {
 
     let pendingAudioUnlock: Promise<void> | null = null;
 
-    // For iOS, request permission immediately if needed
-    if (isIOSDevice && voiceInputMode && microphonePermission !== 'granted') {
+    // Request permission immediately if needed (for ALL devices)
+    if (voiceInputMode && microphonePermission !== 'granted') {
       // Minimal checks - only the absolute essentials
       if (!navigator.mediaDevices?.getUserMedia) {
         alert('Microphone access is not available in this browser.');
@@ -186,7 +186,7 @@ export default function InterviewPage() {
       }
 
       try {
-        console.log('🎤 Requesting microphone permission on iOS (immediate call)...');
+        console.log('🎤 Requesting microphone permission (immediate call)...');
         setMicrophonePermission('checking');
 
         // CRITICAL: Call getUserMedia IMMEDIATELY - no await, no delay, no other operations
@@ -213,7 +213,7 @@ export default function InterviewPage() {
           speechRecognitionRef.current.setMicrophonePermissionGranted(true);
         }
 
-        console.log('✅ Microphone permission granted on iOS');
+        console.log('✅ Microphone permission granted');
       } catch (error: any) {
         console.error('❌ Microphone permission error:', error);
         setMicrophonePermission('denied');
@@ -222,7 +222,7 @@ export default function InterviewPage() {
         }
 
         if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          alert('Microphone permission was denied.\n\nTo enable:\n1. Tap the "AA" icon in Safari address bar\n2. Select "Website Settings"\n3. Set Microphone to "Allow"\n4. Refresh the page\n\nOr go to Settings > Safari > Microphone and allow access for this website.');
+          alert('Microphone permission was denied.\n\nTo enable:\n1. Click the lock icon in your address bar\n2. Set Microphone to "Allow"\n3. Refresh the page');
           return;
         } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
           alert('No microphone found. Please connect a microphone and try again.');
@@ -1365,8 +1365,8 @@ export default function InterviewPage() {
                     onClick={startInterview}
                     disabled={microphonePermission === 'denied' && voiceInputMode}
                     className={`w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-xl font-semibold text-base transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] transform flex items-center justify-center gap-2 ${microphonePermission === 'denied' && voiceInputMode
-                        ? 'opacity-50 cursor-not-allowed'
-                        : ''
+                      ? 'opacity-50 cursor-not-allowed'
+                      : ''
                       }`}
                   >
                     <FiMic className="w-5 h-5" />
@@ -1394,8 +1394,8 @@ export default function InterviewPage() {
                         >
                           {/* Avatar */}
                           <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${message.role === "user"
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
                             }`}>
                             {message.role === "user" ? (
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1412,8 +1412,8 @@ export default function InterviewPage() {
                           <div className={`flex flex-col gap-1 max-w-[75%] ${message.role === "user" ? "items-end" : "items-start"}`}>
                             <div
                               className={`rounded-2xl px-4 py-3 ${message.role === "user"
-                                  ? "bg-blue-600 text-white"
-                                  : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                                 }`}
                             >
                               <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
@@ -1464,8 +1464,8 @@ export default function InterviewPage() {
                         <button
                           onClick={() => setVoiceInputMode(!voiceInputMode)}
                           className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${voiceInputMode
-                              ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                              : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600"
+                            ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600"
                             }`}
                         >
                           {voiceInputMode ? (
@@ -1519,8 +1519,8 @@ export default function InterviewPage() {
                             }}
                             disabled={isAISpeaking || isLoading}
                             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform active:scale-[0.98] touch-manipulation ${isListening
-                                ? "bg-red-600 hover:bg-red-700 text-white"
-                                : "bg-blue-600 hover:bg-blue-700 text-white"
+                              ? "bg-red-600 hover:bg-red-700 text-white"
+                              : "bg-blue-600 hover:bg-blue-700 text-white"
                               }`}
                           >
                             {isListening ? (

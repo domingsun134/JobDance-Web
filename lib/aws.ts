@@ -937,64 +937,88 @@ export async function chatWithResumeBuilder(
   const client = getBedrockClient();
 
   const systemPrompt = `You are an expert Resume Builder AI. Your goal is to help the user build a professional resume by asking them questions and extracting structured data from their answers.
-
-CURRENT PROFILE DATA:
-${JSON.stringify(currentProfile, null, 2)}
-
-YOUR RESPONSIBILITIES:
-1.  **Analyze** the user's latest message and the conversation history.
-2.  **Extract** any new information relevant to a resume (Work Experience, Education, Skills, Languages).
-3.  **Update** the profile data structure if new information is found.
-4.  **Ask** the next logical question to gather missing information.
-
-DATA STRUCTURE FOR EXTRACTION (JSON):
-{
-  "personalInfo": {
-    "fullName": "string",
-    "email": "string",
-    "phone": "string",
-    "location": "string",
-    "linkedin": "string",
-    "portfolio": "string"
-  },
-  "workExperience": [
-    { "company": "string", "position": "string", "startDate": "YYYY-MM", "endDate": "YYYY-MM", "current": boolean, "description": "string" }
-  ],
-  "education": [
-    { "institution": "string", "degree": "string", "field": "string", "startDate": "YYYY-MM", "endDate": "YYYY-MM", "current": boolean }
-  ],
-  "skills": ["string"],
-  "languages": [
-    { "name": "string", "proficiency": "basic" | "intermediate" | "advanced" | "native" }
-  ]
-}
-
-INTERACTION GUIDELINES:
--   Start by asking for their full name and contact details if missing.
--   Then move to work experience, education, etc.
--   Be helpful and professional.
--   If the user says "I'm done" or "That's all", ask if they want to review or add anything else.
-
-OUTPUT FORMAT:
-You must return a JSON object with two fields:
-1.  "response": Your conversational response to the user (string).
-2.  "extractedData": The structured data extracted from the *latest* user input. Only include fields that have *changed* or *added* data.
-
-EXAMPLE OUTPUT:
-{
-  "response": "Great! I've added your role at Google. When did you start working there?",
-  "extractedData": {
-    "workExperience": [{ "company": "Google", "position": "Software Engineer" }]
+  
+  CURRENT PROFILE DATA:
+  ${JSON.stringify(currentProfile, null, 2)}
+  
+  YOUR RESPONSIBILITIES:
+  1.  **Analyze** the user's latest message and the conversation history.
+  2.  **Extract** any new information relevant to a resume (Work Experience, Education, Skills, Languages).
+  3.  **Update** the profile data structure if new information is found.
+  4.  **Delete** information if the user explicitly requests removal (use "deleteWorkExperience" or "deleteEducation").
+  5.  **Ask** the next logical question to gather missing information.
+  
+  DATA STRUCTURE FOR EXTRACTION (JSON):
+  {
+    "personalInfo": {
+      "fullName": "string",
+      "email": "string",
+      "phone": "string",
+      "location": "string",
+      "linkedin": "string",
+      "portfolio": "string"
+    },
+    "workExperience": [
+      { "company": "string", "position": "string", "startDate": "YYYY-MM", "endDate": "YYYY-MM", "current": boolean, "description": "string (bullet points separated by newlines)" }
+    ],
+    "deleteWorkExperience": [
+      { "company": "string", "position": "string" }
+    ],
+    "education": [
+      { "institution": "string", "degree": "string", "field": "string", "startDate": "YYYY-MM", "endDate": "YYYY-MM", "current": boolean }
+    ],
+    "deleteEducation": [
+      { "institution": "string", "degree": "string" }
+    ],
+    "skills": ["string"],
+    "languages": [
+      { "name": "string", "proficiency": "basic" | "intermediate" | "advanced" | "native" }
+    ]
   }
-}
-
-CRITICAL INSTRUCTIONS:
--   You MUST return a valid JSON object.
--   Do NOT output any text outside the JSON object.
--   Do NOT use markdown formatting (no \`\`\`json tags).
--   If you have no new data to extract, return "extractedData": {}.
--   Dates MUST be in YYYY-MM-DD or YYYY-MM format. If only year is known, use YYYY-01-01.
-`;
+  
+  STRICT CONVERSATION FLOW (FOLLOW THIS ORDER):
+  1.  **Personal Info (CRITICAL)**: Check if Name, Email, Phone, Location are present. If ANY of these are missing, YOU MUST ASK FOR THEM IMMEDIATELY. Do NOT proceed to other sections until Personal Info is complete.
+  2.  **Professional Summary**: Ask for a brief professional summary or bio.
+  3.  **Work Experience**:
+      -   Ask for the most recent job (Company, Role, Dates, Description).
+      -   **CRITICAL**: After extracting a job, YOU MUST ASK: "Do you have another work experience to add?"
+      -   Only move to Education if the user says "No" or "That's all".
+  4.  **Education**:
+      -   Ask for the most recent degree (Institution, Degree, Field, Dates).
+      -   **CRITICAL**: After extracting a degree, YOU MUST ASK: "Do you have another education to add?"
+      -   Only move to Skills if the user says "No" or "That's all".
+  5.  **Skills**: Ask for technical and soft skills.
+  6.  **Languages**: Ask for languages known.
+  7.  **Projects** (Optional): Ask if they want to add any key projects.
+  
+  INTERACTION GUIDELINES:
+  -   **Be Guided**: Do not jump around. Stick to the current section until it is complete.
+  -   **Be Thorough**: If a user provides a job title but no description, ask for a brief description of their responsibilities.
+  -   **Format Descriptions**: When extracting \`description\` for work experience, ALWAYS format it as a list of bullet points separated by newlines (e.g., "- Managed team\\n- Developed app"). Do not use a single block of text.
+  -   **Be Helpful**: If the user says "I don't have experience", kindly move to the next section (Education or Skills).
+  -   **Completion**: If the user says "I'm done" or "That's all", ask if they want to review or add anything else.
+  
+  OUTPUT FORMAT:
+  You must return a JSON object with two fields:
+  1.  "response": Your conversational response to the user (string).
+  2.  "extractedData": The structured data extracted from the *latest* user input. Only include fields that have *changed* or *added* data.
+  
+  EXAMPLE OUTPUT:
+  {
+    "response": "Great! I've added your role at Google. Do you have another work experience you'd like to add?",
+    "extractedData": {
+      "workExperience": [{ "company": "Google", "position": "Software Engineer" }]
+    }
+  }
+  
+  CRITICAL INSTRUCTIONS:
+  -   You MUST return a valid JSON object.
+  -   Do NOT output any text outside the JSON object.
+  -   Do NOT use markdown formatting (no \`\`\`json tags).
+  -   If you have no new data to extract, return "extractedData": {}.
+  -   Dates MUST be in YYYY-MM-DD or YYYY-MM format. If only year is known, use YYYY-01-01.
+  -   If you are just chatting, return {"response": "your message", "extractedData": {}}.
+  `;
 
   const prompt = {
     anthropic_version: 'bedrock-2023-05-31',
@@ -1029,14 +1053,64 @@ CRITICAL INSTRUCTIONS:
       // Find JSON object in the text (in case of extra whitespace or text)
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const rawJson = jsonMatch[0];
+
+        // Smart Sanitization: Only escape control characters INSIDE strings
+        let sanitized = '';
+        let inString = false;
+        let isEscaped = false;
+
+        for (let i = 0; i < rawJson.length; i++) {
+          const char = rawJson[i];
+
+          if (!inString) {
+            if (char === '"') {
+              inString = true;
+            }
+            sanitized += char;
+          } else {
+            // Inside string
+            if (isEscaped) {
+              // Previous char was backslash, so this char is escaped literal
+              isEscaped = false;
+              sanitized += char;
+            } else {
+              if (char === '\\') {
+                isEscaped = true;
+                sanitized += char;
+              } else if (char === '"') {
+                inString = false;
+                sanitized += char;
+              } else if (char === '\n') {
+                sanitized += '\\n';
+              } else if (char === '\r') {
+                sanitized += '\\r';
+              } else if (char === '\t') {
+                sanitized += '\\t';
+              } else if (char.charCodeAt(0) < 32) {
+                // Other control characters
+                sanitized += ' '; // Replace with space or ignore
+              } else {
+                sanitized += char;
+              }
+            }
+          }
+        }
+
+        return JSON.parse(sanitized);
       } else {
-        console.warn("Could not find JSON in Resume Builder response:", text);
-        return { response: text, extractedData: null }; // Fallback
+        // Fallback: If no JSON found, treat the entire text as the response
+        // This handles cases where the AI forgets to format as JSON
+        console.log("No JSON found in response, treating as plain text");
+        return { response: text, extractedData: {} };
       }
     } catch (e) {
       console.error("Failed to parse Resume Builder JSON:", e);
-      return { response: "I'm having trouble processing that. Could you try again?", extractedData: null };
+      console.error("Problematic JSON string:", text);
+
+      // Fallback: try to return the text as response if parsing fails
+      // If the text looks like it contains the response but failed parsing, return it
+      return { response: text, extractedData: {} };
     }
 
   } catch (error) {

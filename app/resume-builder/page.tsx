@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
 import ResumePreview from '@/components/ResumePreview';
@@ -22,6 +24,9 @@ export default function ResumeBuilderPage() {
     const [isTyping, setIsTyping] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+
+    const inputRef = useRef<HTMLInputElement>(null);
 
     // Initial load
     useEffect(() => {
@@ -36,13 +41,57 @@ export default function ResumeBuilderPage() {
                 const userProfile = await getUserProfile();
                 setProfile(userProfile);
 
-                // Initial greeting
-                setMessages([
-                    {
-                        role: 'assistant',
-                        content: "Hello! I'm your Resume Builder AI. I'm here to help you create a professional resume. Let's start with your work experience. What was your most recent job?"
+                // Check if profile has any meaningful data
+                const hasData = userProfile && (
+                    (userProfile.workExperience && userProfile.workExperience.length > 0) ||
+                    (userProfile.education && userProfile.education.length > 0) ||
+                    (userProfile.skills && userProfile.skills.length > 0) ||
+                    (userProfile.languages && userProfile.languages.length > 0) ||
+                    (userProfile.personalInfo && Object.values(userProfile.personalInfo).some(val => val && val.length > 0))
+                );
+
+                if (hasData) {
+                    // Profile exists, ask AI to review it and greet accordingly
+                    try {
+                        const response = await fetch('/api/resume/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                messages: [{
+                                    role: 'user',
+                                    content: "I am returning to continue my resume. Please review my current data (provided in system context). CRITICAL: If my Name, Phone, or Email is missing, YOU MUST ASK FOR THEM FIRST before suggesting anything else. If personal info is complete, suggest what I should add next or ask if I want to refine existing sections. Be concise and welcoming."
+                                }],
+                                currentProfile: userProfile
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (data.response) {
+                            setMessages([{ role: 'assistant', content: data.response }]);
+                        } else {
+                            // Fallback if API fails to return response
+                            setMessages([{
+                                role: 'assistant',
+                                content: "Welcome back! I see you've already started your resume. What would you like to work on next?"
+                            }]);
+                        }
+                    } catch (err) {
+                        console.error("Error getting initial AI greeting:", err);
+                        // Fallback on error
+                        setMessages([{
+                            role: 'assistant',
+                            content: "Welcome back! I see you've already started your resume. What would you like to work on next?"
+                        }]);
                     }
-                ]);
+                } else {
+                    // Empty profile, standard greeting
+                    setMessages([
+                        {
+                            role: 'assistant',
+                            content: "Hello! I'm your Resume Builder AI. I'm here to help you create a professional resume. Let's start with your work experience. What was your most recent job?"
+                        }
+                    ]);
+                }
             } catch (error) {
                 console.error('Error loading profile:', error);
             } finally {
@@ -57,6 +106,13 @@ export default function ResumeBuilderPage() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    // Focus input when not typing
+    useEffect(() => {
+        if (!isTyping) {
+            inputRef.current?.focus();
+        }
+    }, [isTyping]);
 
     const handleSendMessage = async () => {
         if (!input.trim() || isTyping) return;
@@ -107,8 +163,11 @@ export default function ResumeBuilderPage() {
                     const newWorkExp = [...(updatedProfile.workExperience || [])];
 
                     data.extractedData.workExperience.forEach((newExp: any) => {
+                        // Match by Company AND Position to allow multiple roles at same company
                         const existingIndex = newWorkExp.findIndex(
-                            (exp) => exp.company.toLowerCase() === newExp.company.toLowerCase()
+                            (exp) =>
+                                exp.company.toLowerCase() === newExp.company.toLowerCase() &&
+                                exp.position.toLowerCase() === newExp.position.toLowerCase()
                         );
 
                         if (existingIndex >= 0) {
@@ -129,12 +188,34 @@ export default function ResumeBuilderPage() {
                     hasChanges = true;
                 }
 
+                if (data.extractedData.deleteWorkExperience) {
+                    const currentWorkExp = [...(updatedProfile.workExperience || [])];
+                    const initialLength = currentWorkExp.length;
+
+                    const filteredWorkExp = currentWorkExp.filter(exp => {
+                        // Check if this experience matches any in the delete list
+                        const shouldDelete = data.extractedData.deleteWorkExperience.some((del: any) =>
+                            exp.company.toLowerCase() === del.company.toLowerCase() &&
+                            (del.position ? exp.position.toLowerCase() === del.position.toLowerCase() : true)
+                        );
+                        return !shouldDelete;
+                    });
+
+                    if (filteredWorkExp.length !== initialLength) {
+                        updatedProfile.workExperience = filteredWorkExp;
+                        hasChanges = true;
+                    }
+                }
+
                 if (data.extractedData.education) {
                     const newEducation = [...(updatedProfile.education || [])];
 
                     data.extractedData.education.forEach((newEdu: any) => {
+                        // Match by Institution AND Degree to allow multiple degrees from same uni
                         const existingIndex = newEducation.findIndex(
-                            (edu) => edu.institution.toLowerCase() === newEdu.institution.toLowerCase()
+                            (edu) =>
+                                edu.institution.toLowerCase() === newEdu.institution.toLowerCase() &&
+                                edu.degree.toLowerCase() === newEdu.degree.toLowerCase()
                         );
 
                         if (existingIndex >= 0) {
@@ -152,6 +233,25 @@ export default function ResumeBuilderPage() {
 
                     updatedProfile.education = newEducation;
                     hasChanges = true;
+                }
+
+                if (data.extractedData.deleteEducation) {
+                    const currentEducation = [...(updatedProfile.education || [])];
+                    const initialLength = currentEducation.length;
+
+                    const filteredEducation = currentEducation.filter(edu => {
+                        // Check if this education matches any in the delete list
+                        const shouldDelete = data.extractedData.deleteEducation.some((del: any) =>
+                            edu.institution.toLowerCase() === del.institution.toLowerCase() &&
+                            (del.degree ? edu.degree.toLowerCase() === del.degree.toLowerCase() : true)
+                        );
+                        return !shouldDelete;
+                    });
+
+                    if (filteredEducation.length !== initialLength) {
+                        updatedProfile.education = filteredEducation;
+                        hasChanges = true;
+                    }
                 }
 
                 if (data.extractedData.skills) {
@@ -180,6 +280,7 @@ export default function ResumeBuilderPage() {
                 }
 
                 if (hasChanges) {
+                    console.log("Saving updated profile:", updatedProfile);
                     setProfile(updatedProfile);
                     // Persist to DB
                     await updateUserProfile(updatedProfile);
@@ -191,6 +292,10 @@ export default function ResumeBuilderPage() {
             setMessages(prev => [...prev, { role: 'assistant', content: "I'm sorry, I encountered an error. Please try again." }]);
         } finally {
             setIsTyping(false);
+            // Focus input after response
+            setTimeout(() => {
+                inputRef.current?.focus();
+            }, 100);
         }
     };
 
@@ -198,6 +303,80 @@ export default function ResumeBuilderPage() {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSendMessage();
+        }
+    };
+
+    const handleExportPDF = async () => {
+        const element = document.getElementById('resume-preview');
+        if (!element) return;
+
+        setIsExporting(true);
+        try {
+            // Clone the element to ensure we capture the full height without scrollbars
+            const clone = element.cloneNode(true) as HTMLElement;
+            clone.style.position = 'absolute';
+            clone.style.top = '-9999px';
+            clone.style.left = '0';
+            clone.style.width = '210mm'; // Force A4 width
+            clone.style.height = 'auto';
+            clone.style.overflow = 'visible'; // Ensure no clipping
+            document.body.appendChild(clone);
+
+            const canvas = await html2canvas(clone, {
+                scale: 2, // Higher scale for better quality
+                useCORS: true,
+                logging: false,
+                windowWidth: clone.scrollWidth,
+                windowHeight: clone.scrollHeight
+            });
+
+            document.body.removeChild(clone);
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4',
+            });
+
+            const imgWidth = 210; // A4 width in mm
+            const pageHeight = 297; // A4 height in mm
+            const bottomMargin = 20; // Bottom margin in mm
+            const contentHeightPerPage = pageHeight - bottomMargin;
+
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            // Add first page
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+
+            // Mask the bottom margin area with a white rectangle
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(0, contentHeightPerPage, imgWidth, bottomMargin, 'F');
+
+            heightLeft -= contentHeightPerPage;
+
+            // Add subsequent pages if content overflows
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight; // Shift image up
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+
+                // Mask the bottom margin area for this page too (except potentially the last one, but safe to do)
+                pdf.setFillColor(255, 255, 255);
+                pdf.rect(0, contentHeightPerPage, imgWidth, bottomMargin, 'F');
+
+                heightLeft -= contentHeightPerPage;
+            }
+
+            pdf.save('resume.pdf');
+        } catch (error) {
+            console.error('Error exporting PDF:', error);
+            alert('Failed to export PDF. Please try again.');
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -282,6 +461,7 @@ export default function ResumeBuilderPage() {
                     <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex gap-2">
                             <input
+                                ref={inputRef}
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
@@ -306,12 +486,20 @@ export default function ResumeBuilderPage() {
                     <div className="max-w-[210mm] mx-auto">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Live Preview</h2>
-                            <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                <FiDownload size={16} />
-                                <span>Export PDF</span>
+                            <button
+                                onClick={handleExportPDF}
+                                disabled={isExporting}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isExporting ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                                ) : (
+                                    <FiDownload size={16} />
+                                )}
+                                <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
                             </button>
                         </div>
-                        <div className="shadow-2xl rounded-lg overflow-hidden">
+                        <div id="resume-preview" className="shadow-2xl rounded-lg overflow-hidden bg-white">
                             <ResumePreview profile={profile} />
                         </div>
                     </div>
