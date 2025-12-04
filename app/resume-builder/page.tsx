@@ -6,7 +6,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
-import ResumePreview from '@/components/ResumePreview';
+import ResumePreview, { TemplateType } from '@/components/ResumePreview';
 import { getUserProfile, updateUserProfile, UserProfile, getCurrentUser } from '@/lib/auth';
 import { FiSend, FiUser, FiCpu, FiDownload, FiMenu } from 'react-icons/fi';
 
@@ -30,6 +30,7 @@ export default function ResumeBuilderPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('modern');
 
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -327,6 +328,42 @@ export default function ResumeBuilderPage() {
             clone.style.overflow = 'visible'; // Ensure no clipping
             document.body.appendChild(clone);
 
+            // --- Smart Pagination Logic ---
+            const A4_HEIGHT_PX = 1123; // Approx height of A4 at 96 DPI (297mm)
+            const PAGE_MARGIN_PX = 40; // Top/Bottom margin buffer
+            const CONTENT_HEIGHT_PER_PAGE = A4_HEIGHT_PX - (PAGE_MARGIN_PX * 2);
+
+            const blocks = clone.querySelectorAll('.resume-block');
+            let currentPageHeight = 0;
+
+            blocks.forEach((block) => {
+                const htmlBlock = block as HTMLElement;
+                const blockHeight = htmlBlock.offsetHeight;
+
+                // Check if adding this block exceeds the current page height
+                if (currentPageHeight + blockHeight > CONTENT_HEIGHT_PER_PAGE) {
+                    // It exceeds, so we need to push this block to the next page
+                    // Calculate how much space is left on the current page
+                    const spacerHeight = A4_HEIGHT_PX - currentPageHeight;
+
+                    // Create a spacer div
+                    const spacer = document.createElement('div');
+                    spacer.style.height = `${spacerHeight}px`;
+                    spacer.style.width = '100%';
+                    spacer.style.display = 'block';
+
+                    // Insert spacer before the current block
+                    htmlBlock.parentNode?.insertBefore(spacer, htmlBlock);
+
+                    // Reset current page height to start of new page + this block's height
+                    currentPageHeight = blockHeight;
+                } else {
+                    // It fits, just add to height
+                    currentPageHeight += blockHeight;
+                }
+            });
+            // -----------------------------
+
             const canvas = await html2canvas(clone, {
                 scale: 2, // Higher scale for better quality
                 useCORS: true,
@@ -346,9 +383,6 @@ export default function ResumeBuilderPage() {
 
             const imgWidth = 210; // A4 width in mm
             const pageHeight = 297; // A4 height in mm
-            const bottomMargin = 20; // Bottom margin in mm
-            const contentHeightPerPage = pageHeight - bottomMargin;
-
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
             let heightLeft = imgHeight;
@@ -356,24 +390,14 @@ export default function ResumeBuilderPage() {
 
             // Add first page
             pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-
-            // Mask the bottom margin area with a white rectangle
-            pdf.setFillColor(255, 255, 255);
-            pdf.rect(0, contentHeightPerPage, imgWidth, bottomMargin, 'F');
-
-            heightLeft -= contentHeightPerPage;
+            heightLeft -= pageHeight;
 
             // Add subsequent pages if content overflows
             while (heightLeft > 0) {
                 position = heightLeft - imgHeight; // Shift image up
                 pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-
-                // Mask the bottom margin area for this page too (except potentially the last one, but safe to do)
-                pdf.setFillColor(255, 255, 255);
-                pdf.rect(0, contentHeightPerPage, imgWidth, bottomMargin, 'F');
-
-                heightLeft -= contentHeightPerPage;
+                pdf.addImage(imgData, 'PNG', 0, - (pageHeight * Math.ceil((imgHeight - heightLeft) / pageHeight)), imgWidth, imgHeight);
+                heightLeft -= pageHeight;
             }
 
             pdf.save('resume.pdf');
@@ -431,8 +455,8 @@ export default function ResumeBuilderPage() {
 
             <Sidebar />
 
-            <div className="relative z-10 flex min-h-screen flex-col md:pl-72">
-                <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-32 pt-6 md:px-10">
+            <div className="relative z-10 flex h-screen flex-col md:pl-72 overflow-hidden">
+                <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col px-4 pb-24 pt-6 md:px-10 md:pb-6 md:h-full">
                     {/* Mobile Header */}
                     <div className="mb-6 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:hidden">
                         <button onClick={() => setSidebarOpen(true)} className="text-white/70">
@@ -442,105 +466,120 @@ export default function ResumeBuilderPage() {
                         <div className="w-5" />
                     </div>
 
-                    <div className="flex flex-1 flex-col gap-6 md:flex-row">
+                    <div className="flex flex-1 flex-col gap-6 md:flex-row md:min-h-0 md:overflow-hidden">
                         {/* Left Panel: Chat Interface */}
-                        <div className={`${glassPanel} flex min-h-[50vh] flex-1 flex-col`}>
-                    {/* Chat Header */}
-                    <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-cyan-200">
-                                <FiCpu />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-semibold text-white">AI Assistant</h2>
-                                <p className="flex items-center gap-2 text-xs font-medium text-emerald-300">
-                                    <span className="h-2 w-2 rounded-full bg-emerald-300" />
-                                    Online
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Chat Messages */}
-                    <div className="flex-1 overflow-y-auto py-4">
-                        <div className="space-y-4">
-                            {messages.map((msg, idx) => (
-                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div
-                                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                                            msg.role === 'user'
-                                                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-none shadow-[0_10px_30px_rgba(6,182,212,0.35)]'
-                                                : 'rounded-bl-none border border-white/5 bg-white/10 text-white'
-                                        }`}
-                                    >
-                                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        <div className={`${glassPanel} flex min-h-[50vh] flex-col md:h-full md:min-h-0 flex-1`}>
+                            {/* Chat Header */}
+                            <div className="flex items-center justify-between border-b border-white/10 p-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-cyan-200">
+                                        <FiCpu />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-semibold text-white">AI Assistant</h2>
+                                        <p className="flex items-center gap-2 text-xs font-medium text-emerald-300">
+                                            <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                                            Online
+                                        </p>
                                     </div>
                                 </div>
-                            ))}
-                            {isTyping && (
-                                <div className="flex justify-start">
-                                    <div className="rounded-2xl rounded-bl-none border border-white/10 bg-white/5 px-4 py-3">
-                                        <div className="flex gap-1 text-white/70">
-                                            <span className="h-2 w-2 animate-bounce rounded-full bg-cyan-300"></span>
-                                            <span className="h-2 w-2 animate-bounce rounded-full bg-cyan-300 delay-100"></span>
-                                            <span className="h-2 w-2 animate-bounce rounded-full bg-cyan-300 delay-200"></span>
+                            </div>
+
+                            {/* Chat Messages */}
+                            <div className="flex-1 overflow-y-auto p-6">
+                                <div className="space-y-4">
+                                    {messages.map((msg, idx) => (
+                                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div
+                                                className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === 'user'
+                                                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-none shadow-[0_10px_30px_rgba(6,182,212,0.35)]'
+                                                    : 'rounded-bl-none border border-white/5 bg-white/10 text-white'
+                                                    }`}
+                                            >
+                                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    ))}
+                                    {isTyping && (
+                                        <div className="flex justify-start">
+                                            <div className="rounded-2xl rounded-bl-none border border-white/10 bg-white/5 px-4 py-3">
+                                                <div className="flex gap-1 text-white/70">
+                                                    <span className="h-2 w-2 animate-bounce rounded-full bg-cyan-300"></span>
+                                                    <span className="h-2 w-2 animate-bounce rounded-full bg-cyan-300 delay-100"></span>
+                                                    <span className="h-2 w-2 animate-bounce rounded-full bg-cyan-300 delay-200"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={messagesEndRef} />
                                 </div>
-                            )}
-                            <div ref={messagesEndRef} />
-                        </div>
-                    </div>
+                            </div>
 
-                    {/* Chat Input */}
-                    <div className="border-t border-white/10 pt-4">
-                        <div className="flex gap-2">
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Type your answer..."
-                                className="flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                                disabled={isTyping}
-                            />
-                            <button
-                                onClick={handleSendMessage}
-                                disabled={!input.trim() || isTyping}
-                                className="rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 p-2 text-white transition hover:from-cyan-400 hover:to-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <FiSend size={18} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Panel: Resume Preview */}
-                <div className={`${glassPanel} flex min-h-[50vh] flex-1 flex-col`}>
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
-                        <h2 className="text-lg font-semibold text-white">Live Preview</h2>
-                        <button
-                            onClick={handleExportPDF}
-                            disabled={isExporting}
-                            className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80 transition hover:border-cyan-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {isExporting ? (
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-cyan-400"></div>
-                            ) : (
-                                <FiDownload size={16} />
-                            )}
-                            <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
-                        </button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="mx-auto max-w-[210mm]">
-                            <div id="resume-preview" className="overflow-hidden rounded-xl bg-white shadow-2xl">
-                                <ResumePreview profile={profile} />
+                            {/* Chat Input */}
+                            <div className="border-t border-white/10 p-6">
+                                <div className="flex gap-2">
+                                    <input
+                                        ref={inputRef}
+                                        type="text"
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onKeyDown={handleKeyDown}
+                                        placeholder="Type your answer..."
+                                        className="flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                        disabled={isTyping}
+                                    />
+                                    <button
+                                        onClick={handleSendMessage}
+                                        disabled={!input.trim() || isTyping}
+                                        className="rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 p-2 text-white transition hover:from-cyan-400 hover:to-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <FiSend size={18} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+
+                        {/* Right Panel: Resume Preview */}
+                        <div className={`${glassPanel} flex min-h-[50vh] flex-col md:h-full md:min-h-0 md:w-[230mm] shrink-0`}>
+                            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-6">
+                                <div className="flex items-center gap-4">
+                                    <h2 className="text-lg font-semibold text-white">Live Preview</h2>
+                                    <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+                                        {(['modern', 'professional', 'creative'] as TemplateType[]).map((t) => (
+                                            <button
+                                                key={t}
+                                                onClick={() => setSelectedTemplate(t)}
+                                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${selectedTemplate === t
+                                                    ? 'bg-cyan-500 text-white shadow-lg'
+                                                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                                                    }`}
+                                            >
+                                                {t.charAt(0).toUpperCase() + t.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleExportPDF}
+                                    disabled={isExporting}
+                                    className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80 transition hover:border-cyan-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {isExporting ? (
+                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-cyan-400"></div>
+                                    ) : (
+                                        <FiDownload size={16} />
+                                    )}
+                                    <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                <div className="mx-auto max-w-[210mm]">
+                                    <div id="resume-preview" className="overflow-hidden rounded-xl bg-white shadow-2xl">
+                                        <ResumePreview profile={profile} template={selectedTemplate} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div> {/* close flex container */}
                 </div>
             </div>

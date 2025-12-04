@@ -6,20 +6,29 @@ import Link from "next/link";
 import { loginUser, signInWithGoogle, signInWithLinkedIn } from "@/lib/auth";
 import Logo from "@/components/Logo";
 
+import HCaptcha from "@hcaptcha/react-hcaptcha";
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
+    if (!captchaToken) {
+      setError("Please complete the captcha");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const user = await loginUser(email, password);
+      const user = await loginUser(email, password, captchaToken);
       if (user.onboardingCompleted) {
         router.push("/dashboard");
       } else {
@@ -33,40 +42,38 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-4 sm:py-8 bg-black relative overflow-hidden">
-      {/* Animated background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20" />
-
-      {/* Animated grid pattern */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
-                           linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)`,
-          backgroundSize: '50px 50px'
-        }} />
+    <div className="min-h-screen flex items-center justify-center px-4 py-2 bg-black relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 opacity-90">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-950 via-slate-950 to-cyan-950" />
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)",
+            backgroundSize: "140px 140px",
+          }}
+        />
+        <div className="absolute -top-32 -left-10 h-96 w-96 rounded-full bg-purple-500/30 blur-[140px]" />
+        <div className="absolute bottom-0 right-[-10%] h-[32rem] w-[32rem] rounded-full bg-cyan-500/20 blur-[200px]" />
       </div>
-
-      {/* Floating orbs */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '10s' }} />
 
       <div className="w-full max-w-md relative z-10 animate-slide-in-up">
         {/* Logo and Welcome Section */}
-        <div className="mb-8 sm:mb-10 text-center">
-          <h1 className="text-3xl sm:text-5xl font-bold mb-3 sm:mb-5 animate-fade-in text-white" style={{ animationDelay: "0.1s" }}>
+        <div className="mb-4 text-center">
+          <h1 className="text-2xl sm:text-4xl font-bold mb-2 animate-fade-in text-white" style={{ animationDelay: "0.1s" }}>
             Welcome to
           </h1>
           <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
             <Logo />
           </div>
-          <p className="text-gray-400 text-sm sm:text-base font-medium animate-fade-in mt-4 sm:mt-6" style={{ animationDelay: "0.3s" }}>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium animate-fade-in mt-2" style={{ animationDelay: "0.3s" }}>
             Your AI-powered career advisor
           </p>
         </div>
 
 
         {/* Form Content Container */}
-        <div className="min-h-[200px] sm:min-h-[280px] relative p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl">
+        <div className="relative p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl">
           {/* Error Message */}
           {error && (
             <div className="mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-red-300 text-sm animate-fade-in">
@@ -75,14 +82,14 @@ export default function LoginPage() {
           )}
 
           {/* Email Login */}
-          <form onSubmit={handleEmailSubmit} className="space-y-4 animate-fade-in">
+          <form onSubmit={handleEmailSubmit} className="space-y-3 animate-fade-in">
             <div>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base"
+                className="w-full px-3 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm"
                 placeholder="Enter your email"
               />
             </div>
@@ -92,19 +99,27 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm sm:text-base"
+                className="w-full px-3 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm"
                 placeholder="Enter your password"
               />
             </div>
+            <div className="flex justify-center my-2">
+              <HCaptcha
+                sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY || ""}
+                onVerify={(token) => setCaptchaToken(token)}
+                theme="dark"
+              />
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 active:scale-95"
+              className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 active:scale-95"
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
 
-            <div className="relative my-6">
+            <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-white/10"></div>
               </div>
@@ -117,7 +132,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => signInWithGoogle()}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white transition-all duration-300 hover:scale-[1.02]"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white transition-all duration-300 hover:scale-[1.02] text-sm"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
@@ -142,7 +157,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => signInWithLinkedIn()}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white transition-all duration-300 hover:scale-[1.02]"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white transition-all duration-300 hover:scale-[1.02] text-sm"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
@@ -156,7 +171,7 @@ export default function LoginPage() {
         {/* Sign Up Link */}
         <Link
           href="/auth/register"
-          className="block w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-medium text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 animate-fade-in mt-4"
+          className="block w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white py-2.5 px-4 rounded-xl font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 animate-fade-in mt-3"
           style={{ animationDelay: "0.5s" }}
         >
           <span>Don't have an account? Sign up</span>
@@ -166,7 +181,7 @@ export default function LoginPage() {
         </Link>
 
         {/* Footer */}
-        <p className="mt-4 sm:mt-8 text-center text-xs text-gray-500 animate-fade-in" style={{ animationDelay: "0.6s" }}>
+        <p className="mt-4 text-center text-xs text-gray-500 animate-fade-in" style={{ animationDelay: "0.6s" }}>
           By continuing, you agree to our{" "}
           <Link href="/terms" className="text-purple-400 hover:text-purple-300 underline">
             Terms of Service

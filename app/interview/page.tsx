@@ -1192,46 +1192,47 @@ export default function InterviewPage() {
       {/* Main Content Area */}
       <div className="relative z-10 flex-1 flex flex-col min-w-0 md:pl-72 transition-all duration-300">
         {/* Header */}
-        <header className={`${glassPanel} mx-4 mt-6 md:mx-10`}>
-          <div className="flex w-full flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className={sectionLabel}>Live practice cockpit</p>
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl font-semibold leading-tight text-white">
-                  AI Interview Practice
-                </h1>
-                {isInterviewing && questionCount > 0 && (
-                  <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 bg-white/5 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-white/80">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
-                    Question {questionCount} of {MAX_QUESTIONS}
-                  </div>
-                )}
+        <div className="px-4 md:px-10 mt-6">
+          <header className={`${glassPanel} mx-auto w-full max-w-4xl p-6`}>
+            <div className="flex w-full flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className={sectionLabel}>Live practice cockpit</p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-semibold leading-tight text-white">
+                    AI Interview Practice
+                  </h1>
+                  {isInterviewing && questionCount > 0 && (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 bg-white/5 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-white/80">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
+                      Question {questionCount} of {MAX_QUESTIONS}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-            {isInterviewing && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleAudio}
-                  className={`rounded-2xl border px-4 py-2 transition ${
-                    isAudioEnabled
+              {isInterviewing && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleAudio}
+                    className={`rounded-2xl border px-4 py-2 transition ${isAudioEnabled
                       ? "border-white/10 bg-white/5 text-white/80 hover:border-cyan-400/50 hover:text-white"
                       : "border-red-500/30 bg-red-500/10 text-red-300 hover:border-red-400/60"
-                  }`}
-                  title={isAudioEnabled ? "Mute AI voice" : "Unmute AI voice"}
-                >
-                  {isAudioEnabled ? <FiVolume2 className="text-base" /> : <FiVolumeX className="text-base" />}
-                </button>
-                <button
-                  onClick={endInterview}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20"
-                >
-                  <FiX className="text-base" />
-                  End Interview
-                </button>
-              </div>
-            )}
-          </div>
-        </header>
+                      }`}
+                    title={isAudioEnabled ? "Mute AI voice" : "Unmute AI voice"}
+                  >
+                    {isAudioEnabled ? <FiVolume2 className="text-base" /> : <FiVolumeX className="text-base" />}
+                  </button>
+                  <button
+                    onClick={endInterview}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20"
+                  >
+                    <FiX className="text-base" />
+                    End Interview
+                  </button>
+                </div>
+              )}
+            </div>
+          </header>
+        </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 pb-32 pt-6 md:px-10">
@@ -1285,8 +1286,8 @@ export default function InterviewPage() {
                             {isIOS()
                               ? "Go to Settings → Safari → Microphone and enable access, then refresh."
                               : /Android/.test(navigator.userAgent)
-                              ? "Allow microphone access when prompted, or enable it in your browser settings and refresh."
-                              : "Enable microphone access in your browser settings, then refresh."}
+                                ? "Allow microphone access when prompted, or enable it in your browser settings and refresh."
+                                : "Enable microphone access in your browser settings, then refresh."}
                           </p>
                           <button
                             type="button"
@@ -1420,11 +1421,10 @@ export default function InterviewPage() {
 
                           <div className={`flex max-w-[75%] flex-col gap-1 ${message.role === "user" ? "items-end" : "items-start"}`}>
                             <div
-                              className={`rounded-2xl px-4 py-3 ${
-                                message.role === "user"
-                                  ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-[0_10px_30px_rgba(6,182,212,0.35)]"
-                                  : "bg-white/10 text-white"
-                              }`}
+                              className={`rounded-2xl px-4 py-3 ${message.role === "user"
+                                ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-[0_10px_30px_rgba(6,182,212,0.35)]"
+                                : "bg-white/10 text-white"
+                                }`}
                             >
                               <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                             </div>
@@ -1473,11 +1473,10 @@ export default function InterviewPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setVoiceInputMode(!voiceInputMode)}
-                          className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
-                            voiceInputMode
-                              ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-100"
-                              : "border-white/10 bg-white/5 text-white/70"
-                          }`}
+                          className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${voiceInputMode
+                            ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-100"
+                            : "border-white/10 bg-white/5 text-white/70"
+                            }`}
                         >
                           {voiceInputMode ? (
                             <>
@@ -1531,11 +1530,10 @@ export default function InterviewPage() {
                               }
                             }}
                             disabled={isAISpeaking || isLoading}
-                            className={`flex flex-1 touch-manipulation transform items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 shadow-[0_10px_30px_rgba(6,182,212,0.3)] ${
-                              isListening
-                                ? "bg-red-500/80 hover:bg-red-500 text-white"
-                                : "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
-                            }`}
+                            className={`flex flex-1 touch-manipulation transform items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 shadow-[0_10px_30px_rgba(6,182,212,0.3)] ${isListening
+                              ? "bg-red-500/80 hover:bg-red-500 text-white"
+                              : "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
+                              }`}
                           >
                             {isListening ? (
                               <>
