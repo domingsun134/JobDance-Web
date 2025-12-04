@@ -76,7 +76,7 @@ export default function OnboardingPage() {
           // Load availability
           if (existingProfile.availability.startDate || existingProfile.availability.duration) {
             setAvailability({
-              startDate: existingProfile.availability.startDate || "",
+              startDate: formatDateForInput(existingProfile.availability.startDate || ""),
               duration: existingProfile.availability.duration || "",
             });
           }
@@ -598,7 +598,7 @@ export default function OnboardingPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                 <input
-                  type="date"
+                  type="month"
                   value={availability.startDate}
                   onChange={(e) => setAvailability({ ...availability, startDate: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-base text-gray-900"
