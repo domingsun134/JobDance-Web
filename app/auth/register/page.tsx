@@ -121,6 +121,7 @@ export default function RegisterPage() {
                 required
                 className="w-full px-3 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm"
                 placeholder="Enter your email"
+                autoComplete="email"
               />
             </div>
             <div>
@@ -131,6 +132,7 @@ export default function RegisterPage() {
                 required
                 className="w-full px-3 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm"
                 placeholder="Enter your password"
+                autoComplete="new-password"
               />
             </div>
             <div>
@@ -141,6 +143,7 @@ export default function RegisterPage() {
                 required
                 className="w-full px-3 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm"
                 placeholder="Confirm your password"
+                autoComplete="new-password"
               />
             </div>
 
