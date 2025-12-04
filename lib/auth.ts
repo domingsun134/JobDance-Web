@@ -513,11 +513,42 @@ export async function logoutUser(): Promise<void> {
   await supabase.auth.signOut();
 }
 
+// Sign in with Google OAuth
+export async function signInWithGoogle(): Promise<void> {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+
+    if (error) {
+      console.error('Google OAuth error:', error);
+      throw new Error(error.message || 'Failed to initiate Google login');
+    }
+
+    if (data.url) {
+      console.log('Redirecting to Google OAuth:', data.url);
+      window.location.href = data.url;
+    } else {
+      throw new Error('No redirect URL received from Supabase');
+    }
+  } catch (err: any) {
+    console.error('Google sign-in error:', err);
+    throw err;
+  }
+}
+
 // Sign in with LinkedIn OAuth
 export async function signInWithLinkedIn(): Promise<void> {
   try {
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'linkedin',
+      provider: 'linkedin_oidc',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
