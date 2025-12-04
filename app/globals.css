@@ -80,6 +80,59 @@
   }
 }
 
+@layer components {
+  .onboarding-shell {
+    @apply relative min-h-screen overflow-hidden bg-black text-white;
+  }
+
+  .onboarding-card {
+    @apply rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(15,23,42,0.45)];
+  }
+
+  .onboarding-card h1,
+  .onboarding-card h2,
+  .onboarding-card h3 {
+    @apply text-white;
+  }
+
+  .onboarding-card p {
+    @apply text-white/70;
+  }
+
+  .onboarding-shell input,
+  .onboarding-shell select,
+  .onboarding-shell textarea {
+    @apply w-full min-w-0 rounded-2xl border border-white/15 bg-black/40 px-3 py-2 text-base text-white placeholder:text-white/40 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30;
+  }
+
+  /* Allow native date/month inputs to shrink with the layout */
+  .onboarding-shell input[type="date"],
+  .onboarding-shell input[type="month"] {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .onboarding-shell label {
+    @apply text-sm font-medium text-white/80;
+  }
+
+  .onboarding-shell .dashed-button {
+    @apply w-full rounded-2xl border-2 border-dashed border-white/20 px-4 py-2 text-white/70 transition hover:border-cyan-400/60 hover:text-white;
+  }
+
+  .onboarding-shell .primary-button {
+    @apply rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 px-6 py-3 font-semibold text-white transition hover:from-cyan-400 hover:to-blue-400 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .onboarding-shell .secondary-button {
+    @apply rounded-2xl border border-white/20 px-6 py-3 text-white/80 transition hover:border-cyan-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .onboarding-shell .chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -175,6 +228,11 @@ textarea::placeholder {
   color: #6b7280 !important;
   /* gray-500 */
   opacity: 1 !important;
+}
+
+.onboarding-shell input::placeholder,
+.onboarding-shell textarea::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
 }
 
 /* Smooth scrolling */
@@ -389,6 +447,20 @@ input[type="checkbox"]:checked::before {
 input[type="checkbox"]:focus {
   outline: 2px solid #0284c7 !important;
   outline-offset: 2px !important;
+}
+
+.onboarding-shell input[type="checkbox"] {
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  background-color: transparent !important;
+}
+
+.onboarding-shell input[type="checkbox"]:checked {
+  background-color: rgba(6, 182, 212, 0.3) !important;
+  border-color: #22d3ee !important;
+}
+
+.onboarding-shell input[type="checkbox"]:checked::before {
+  color: white !important;
 }
 
 /* Safe area for mobile devices */

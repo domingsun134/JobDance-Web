@@ -3,11 +3,60 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getCurrentUser, getUserProfile, logoutUser, type User, type UserProfile } from "@/lib/auth";
-import { FiLogOut, FiBriefcase, FiBook, FiCode, FiGlobe, FiCalendar, FiDollarSign, FiEdit3 } from "react-icons/fi";
+import {
+  getCurrentUser,
+  getUserProfile,
+  logoutUser,
+  type User,
+  type UserProfile,
+} from "@/lib/auth";
+import {
+  FiLogOut,
+  FiBriefcase,
+  FiBook,
+  FiCode,
+  FiGlobe,
+  FiCalendar,
+  FiDollarSign,
+  FiEdit3,
+  FiFileText,
+  FiMessageCircle,
+  FiActivity,
+} from "react-icons/fi";
 import { formatDateRange } from "@/lib/utils";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
+
+const glassPanel =
+  "relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(6,182,212,0.15)]";
+
+const statCard =
+  "rounded-2xl border border-white/10 bg-black/30 px-4 py-5 transition hover:border-cyan-400/40";
+
+const sectionLabel =
+  "text-[11px] uppercase tracking-[0.35em] text-white/60 font-semibold";
+
+type TimelineEntry = {
+  startDate?: string | null;
+  endDate?: string | null;
+  current?: boolean;
+};
+
+const getRecencyScore = (entry: TimelineEntry) => {
+  const toTimestamp = (value?: string | null) =>
+    value ? new Date(value).getTime() : 0;
+
+  if (entry.current) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  if (entry.endDate) {
+    return toTimestamp(entry.endDate);
+  }
+  return toTimestamp(entry.startDate);
+};
+
+const sortByRecency = <T extends TimelineEntry>(entries: T[]) =>
+  [...entries].sort((a, b) => getRecencyScore(b) - getRecencyScore(a));
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -47,126 +96,213 @@ export default function DashboardPage() {
 
   if (loading || !user || !profile) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex min-h-screen items-center justify-center bg-black text-white">
+        <div className="h-14 w-14 animate-spin rounded-full border-2 border-white/20 border-t-cyan-400" />
       </div>
     );
   }
 
+  const stats = [
+    {
+      label: "Experience entries",
+      value: profile.workExperience.length,
+      helper: "Career depth",
+    },
+    {
+      label: "Skills highlighted",
+      value: profile.skills.length,
+      helper: "Areas of mastery",
+    },
+    {
+      label: "Education records",
+      value: profile.education.length,
+      helper: "Learning paths",
+    },
+    {
+      label: "Languages spoken",
+      value: profile.languages.length,
+      helper: "Communication range",
+    },
+  ];
+
+  const sortedWorkExperience = sortByRecency(profile.workExperience);
+  const sortedEducation = sortByRecency(profile.education);
+
   return (
-    <div className="h-screen flex flex-col px-3 py-2 pb-20 bg-background relative overflow-hidden transition-colors duration-300">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 -left-4 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 -right-4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl"></div>
+    <div className="relative min-h-screen overflow-hidden bg-black pb-28 text-white">
+      {/* Backgrounds */}
+      <div className="pointer-events-none absolute inset-0 opacity-90">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-950 via-slate-950 to-cyan-950" />
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(148,163,184,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.08) 1px, transparent 1px)",
+            backgroundSize: "140px 140px",
+          }}
+        />
+        <div className="absolute -top-32 -left-10 h-96 w-96 rounded-full bg-purple-500/30 blur-[140px]" />
+        <div className="absolute bottom-0 right-[-10%] h-[32rem] w-[32rem] rounded-full bg-cyan-500/20 blur-[200px]" />
       </div>
 
       <Sidebar />
 
-      <div className="max-w-5xl mx-auto w-full h-full flex flex-col relative z-10 overflow-hidden md:pl-64 transition-all duration-300">
-        {/* Header */}
-        <div className="bg-card rounded-xl shadow-sm p-4 mb-4 border flex-shrink-0">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-foreground tracking-tight">
-                Dashboard
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pt-6 md:px-10 md:pl-72">
+        {/* Hero */}
+        <section className={`${glassPanel} p-6`}>
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className={sectionLabel}>Career cockpit</p>
+              <h1 className="mt-2 text-4xl font-semibold leading-tight md:text-5xl">
+                <span className="text-white">Welcome back, </span>
+                <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+                  {profile.personalInfo.fullName || "Creator"}
+                </span>
               </h1>
-              <div className="flex items-center gap-2 px-2 py-1 bg-muted/50 rounded-full border border-border/50">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <p className="text-muted-foreground text-xs font-medium truncate max-w-[150px]">{user.email}</p>
-              </div>
+              <p className="mt-3 text-sm text-white/70">
+                Continue your AI-powered journey — everything is synced with the
+                landing experience.
+              </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all duration-200"
-            >
-              <FiLogOut className="text-sm" />
-              <span className="text-sm font-medium">Logout</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-white/70">
+                {user.email}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 transition hover:border-cyan-400/60 hover:text-white"
+              >
+                <FiLogOut className="text-base" />
+                Logout
+              </button>
+            </div>
           </div>
-        </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {stats.map((stat) => (
+              <div key={stat.label} className={statCard}>
+                <p className="text-4xl font-semibold text-white">
+                  {stat.value.toString().padStart(2, "0")}
+                </p>
+                <p className="mt-1 text-sm font-medium text-white/80">
+                  {stat.label}
+                </p>
+                <p className="text-xs text-white/50">{stat.helper}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* Quick Actions */}
-        <div className="bg-card rounded-xl shadow-sm p-4 mb-4 border flex-shrink-0">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+        <section className={`${glassPanel} p-6`}>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className={sectionLabel}>Quick actions</p>
+              <h2 className="mt-1 text-xl font-semibold">Launch your next move</h2>
             </div>
-            <h2 className="text-lg font-semibold text-foreground">Quick Actions</h2>
+            <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/60">
+              Synced with AI copilots
+            </span>
           </div>
-          <div className="flex gap-3">
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
             <Link
               href="/interview"
-              className="group relative flex-1 py-3 px-4 bg-primary text-primary-foreground rounded-lg text-center font-medium hover:bg-primary/90 transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.99] overflow-hidden"
+              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-purple-600/70 via-indigo-600/80 to-cyan-500/70 px-5 py-6 shadow-[0_20px_60px_rgba(79,70,229,0.35)] transition hover:scale-[1.01]"
             >
-              <span className="relative flex items-center justify-center gap-2 text-sm">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-                Start Interview
-              </span>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 px-3 py-1 text-xs font-medium uppercase tracking-widest">
+                Live AI
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
+              </div>
+              <h3 className="text-lg font-semibold">Start Interview</h3>
+              <p className="mt-1 text-sm text-white/80">
+                Adaptive interviews with instant coaching.
+              </p>
+              <FiMessageCircle className="absolute bottom-4 right-4 text-3xl text-white/60 transition group-hover:text-white" />
             </Link>
+
             <Link
               href="/interview/reports"
-              className="group flex items-center justify-center gap-2 px-6 py-3 bg-secondary text-secondary-foreground rounded-lg text-center font-medium hover:bg-secondary/80 transition-all duration-300 border border-border"
+              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 px-5 py-6 transition hover:border-cyan-400/50"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span className="text-sm">Reports</span>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-xs font-medium uppercase tracking-widest text-white/60">
+                Insights
+              </div>
+              <h3 className="text-lg font-semibold text-white">Reports & Coaching</h3>
+              <p className="mt-1 text-sm text-white/70">
+                Break down past sessions and unlock next steps.
+              </p>
+              <FiActivity className="absolute bottom-4 right-4 text-3xl text-white/50 transition group-hover:text-cyan-300" />
+            </Link>
+
+            <Link
+              href="/resume-builder"
+              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-cyan-500/40 via-sky-600/50 to-emerald-500/40 px-5 py-6 shadow-[0_20px_60px_rgba(6,182,212,0.25)] transition hover:scale-[1.01]"
+            >
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 px-3 py-1 text-xs font-medium uppercase tracking-widest">
+                New
+              </div>
+              <h3 className="text-lg font-semibold">Resume Builder</h3>
+              <p className="mt-1 text-sm text-white/80">
+                Generate on-brand resumes in seconds.
+              </p>
+              <FiFileText className="absolute bottom-4 right-4 text-3xl text-white/70 transition group-hover:text-white" />
             </Link>
           </div>
-        </div>
+        </section>
 
         {/* Profile Summary */}
-        <div className="bg-card rounded-xl shadow-sm p-4 border flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-4 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-semibold text-foreground">Your Profile</h2>
+        <section className={`${glassPanel} p-6`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className={sectionLabel}>Profile intelligence</p>
+              <h2 className="mt-1 text-xl font-semibold">Your career fingerprint</h2>
             </div>
             <Link
               href="/onboarding"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground transition-all duration-200"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 transition hover:border-pink-400/50 hover:text-white"
             >
-              <FiEdit3 className="text-sm" />
-              <span>Edit</span>
+              <FiEdit3 className="text-base" />
+              Refine profile
             </Link>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
+          <div className="mt-6 space-y-6">
             {/* Work Experience */}
             {profile.workExperience.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <FiBriefcase className="text-muted-foreground text-sm" />
-                  <h3 className="font-medium text-foreground text-sm">Work Experience</h3>
+                <div className="flex items-center gap-2 text-white/70">
+                  <FiBriefcase className="text-base" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide">
+                    Work Experience
+                  </h3>
                 </div>
-                <div className="space-y-2">
-                  {profile.workExperience.map((exp) => (
-                    <div key={exp.id} className="p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
-                      <div className="flex items-start justify-between mb-1">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground text-sm truncate">{exp.position}</p>
-                          <p className="text-muted-foreground text-xs truncate">{exp.company}</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {sortedWorkExperience.map((exp) => (
+                    <div
+                      key={exp.id}
+                      className="rounded-2xl border border-white/10 bg-black/40 p-4 transition hover:border-purple-400/40"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-semibold text-white">
+                            {exp.position}
+                          </p>
+                          <p className="text-sm text-white/60">{exp.company}</p>
                         </div>
                         {exp.current && (
-                          <span className="px-2 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-medium rounded-full ml-2 flex-shrink-0">
+                          <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-300">
                             Current
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-muted-foreground mb-1">
+                      <p className="mt-2 text-xs text-white/50">
                         {formatDateRange(exp.startDate, exp.endDate, exp.current)}
                       </p>
                       {exp.description && (
-                        <p className="text-xs text-muted-foreground/80 line-clamp-2">{exp.description}</p>
+                        <p className="mt-3 text-sm text-white/70">
+                          {exp.description}
+                        </p>
                       )}
                     </div>
                   ))}
@@ -177,20 +313,23 @@ export default function DashboardPage() {
             {/* Education */}
             {profile.education.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <FiBook className="text-muted-foreground text-sm" />
-                  <h3 className="font-medium text-foreground text-sm">Education</h3>
+                <div className="flex items-center gap-2 text-white/70">
+                  <FiBook className="text-base" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide">
+                    Education
+                  </h3>
                 </div>
-                <div className="space-y-2">
-                  {profile.education.map((edu) => (
-                    <div key={edu.id} className="p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
-                      <div className="flex items-start justify-between mb-1">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground text-sm truncate">{edu.degree} in {edu.field}</p>
-                          <p className="text-muted-foreground text-xs truncate">{edu.institution}</p>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {sortedEducation.map((edu) => (
+                    <div
+                      key={edu.id}
+                      className="rounded-2xl border border-white/10 bg-black/40 p-4"
+                    >
+                      <p className="text-lg font-semibold text-white">
+                        {edu.degree} · {edu.field}
+                      </p>
+                      <p className="text-sm text-white/60">{edu.institution}</p>
+                      <p className="mt-2 text-xs text-white/50">
                         {formatDateRange(edu.startDate, edu.endDate, edu.current)}
                       </p>
                     </div>
@@ -202,15 +341,17 @@ export default function DashboardPage() {
             {/* Skills */}
             {profile.skills.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <FiCode className="text-muted-foreground text-sm" />
-                  <h3 className="font-medium text-foreground text-sm">Skills</h3>
+                <div className="flex items-center gap-2 text-white/70">
+                  <FiCode className="text-base" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide">
+                    Skills
+                  </h3>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {profile.skills.map((skill) => (
                     <span
                       key={skill}
-                      className="px-2.5 py-1 bg-primary/10 text-primary rounded-md text-xs font-medium border border-primary/20"
+                      className="rounded-full border border-white/15 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-white/80"
                     >
                       {skill}
                     </span>
@@ -222,61 +363,82 @@ export default function DashboardPage() {
             {/* Languages */}
             {profile.languages.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <FiGlobe className="text-muted-foreground text-sm" />
-                  <h3 className="font-medium text-foreground text-sm">Languages</h3>
+                <div className="flex items-center gap-2 text-white/70">
+                  <FiGlobe className="text-base" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide">
+                    Languages
+                  </h3>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {profile.languages.map((lang, index) => (
-                    <div key={index} className="px-3 py-2 rounded-lg border bg-muted/30 flex justify-between items-center">
-                      <span className="text-foreground text-xs font-medium">{lang.name}</span>
-                      <span className="text-[10px] text-muted-foreground capitalize bg-background px-2 py-0.5 rounded-full border">{lang.proficiency}</span>
+                    <div
+                      key={`${lang.name}-${index}`}
+                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/40 px-4 py-3"
+                    >
+                      <span className="text-sm font-semibold text-white">
+                        {lang.name}
+                      </span>
+                      <span className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white/70">
+                        {lang.proficiency}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Availability & Salary Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Availability */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <FiCalendar className="text-muted-foreground text-sm" />
-                  <h3 className="font-medium text-foreground text-sm">Availability</h3>
+            {/* Availability & Salary */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+                <div className="flex items-center gap-2 text-white/70">
+                  <FiCalendar className="text-base" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide">
+                    Availability
+                  </h3>
                 </div>
-                <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground text-xs">Start</span>
-                    <span className="text-foreground font-medium text-xs">
-                      {profile.availability.startDate ? formatDateRange(profile.availability.startDate, null, false) : "Not set"}
+                <div className="mt-4 space-y-3 text-sm text-white/70">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/50">Start date</span>
+                    <span className="font-semibold text-white">
+                      {profile.availability.startDate
+                        ? formatDateRange(
+                            profile.availability.startDate,
+                            null,
+                            false,
+                          )
+                        : "Not set"}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground text-xs">Duration</span>
-                    <span className="text-foreground font-medium text-xs">{profile.availability.duration || "Not set"}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/50">Duration</span>
+                    <span className="font-semibold text-white">
+                      {profile.availability.duration || "Not set"}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Expected Salary */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <FiDollarSign className="text-muted-foreground text-sm" />
-                  <h3 className="font-medium text-foreground text-sm">Salary</h3>
+              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-cyan-500/10 via-sky-500/10 to-purple-500/10 p-4 text-center">
+                <div className="flex items-center justify-center gap-2 text-white/70">
+                  <FiDollarSign className="text-base" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide">
+                    Expected salary
+                  </h3>
                 </div>
-                <div className="p-3 rounded-lg border bg-muted/30 h-[88px] flex items-center justify-center">
-                  <p className="text-foreground font-medium text-sm text-center">
-                    {profile.expectedSalary.amount > 0
-                      ? `${profile.expectedSalary.currency} ${profile.expectedSalary.amount.toLocaleString()}/${profile.expectedSalary.period}`
-                      : "Not set"}
-                  </p>
-                </div>
+                <p className="mt-6 text-2xl font-semibold">
+                  {profile.expectedSalary.amount > 0
+                    ? `${profile.expectedSalary.currency} ${profile.expectedSalary.amount.toLocaleString()}/${profile.expectedSalary.period}`
+                    : "Not set"}
+                </p>
+                <p className="mt-2 text-xs uppercase tracking-[0.4em] text-white/50">
+                  Updated in real time
+                </p>
               </div>
             </div>
           </div>
-        </div>
+        </section>
       </div>
+
       <BottomNav />
     </div>
   );

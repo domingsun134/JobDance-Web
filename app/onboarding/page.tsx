@@ -242,25 +242,44 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen px-4 py-8 pb-20 bg-gray-900">
-      <div className="max-w-2xl mx-auto">
+    <div className="onboarding-shell px-4 py-10 pb-32">
+      <div className="pointer-events-none absolute inset-0 opacity-90">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-950 via-slate-950 to-cyan-950" />
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)",
+            backgroundSize: "140px 140px",
+          }}
+        />
+        <div className="absolute -top-32 -left-10 h-96 w-96 rounded-full bg-purple-500/30 blur-[140px]" />
+        <div className="absolute bottom-0 right-[-10%] h-[32rem] w-[32rem] rounded-full bg-cyan-500/20 blur-[200px]" />
+      </div>
+
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-6">
         {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-semibold text-white">
-              Step {step} of {totalSteps}
-            </h2>
-            <span className="text-sm text-gray-400">{Math.round((step / totalSteps) * 100)}%</span>
+        <div className="onboarding-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/60">Profile setup</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">
+                Step {step} of {totalSteps}
+              </h2>
+            </div>
+            <span className="text-sm font-semibold text-white/70">
+              {Math.round((step / totalSteps) * 100)}%
+            </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="mt-4 h-2 w-full rounded-full bg-white/10">
             <div
-              className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+              className="h-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-300"
               style={{ width: `${(step / totalSteps) * 100}%` }}
             ></div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+        <div className="onboarding-card p-6 md:p-8">
           {/* Step 1: Work Experience */}
           {step === 1 && (
             <div className="space-y-6">
@@ -270,12 +289,12 @@ export default function OnboardingPage() {
               </div>
 
               {workExperiences.map((exp) => (
-                <div key={exp.id} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                <div key={exp.id} className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-4">
                   <div className="flex justify-between items-center">
                     <h3 className="font-semibold text-gray-800">Experience {workExperiences.indexOf(exp) + 1}</h3>
                     <button
                       onClick={() => removeWorkExperience(exp.id)}
-                      className="text-red-600 hover:text-red-700 text-sm"
+                      className="text-red-300 hover:text-red-200 text-sm"
                     >
                       Remove
                     </button>
@@ -356,7 +375,7 @@ export default function OnboardingPage() {
 
               <button
                 onClick={addWorkExperience}
-                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-600 transition-colors text-base"
+              className="dashed-button"
               >
                 + Add Work Experience
               </button>
@@ -372,12 +391,12 @@ export default function OnboardingPage() {
               </div>
 
               {educations.map((edu) => (
-                <div key={edu.id} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                <div key={edu.id} className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-4">
                   <div className="flex justify-between items-center">
                     <h3 className="font-semibold text-gray-800">Education {educations.indexOf(edu) + 1}</h3>
                     <button
                       onClick={() => removeEducation(edu.id)}
-                      className="text-red-600 hover:text-red-700 text-sm"
+                      className="text-red-300 hover:text-red-200 text-sm"
                     >
                       Remove
                     </button>
@@ -458,7 +477,7 @@ export default function OnboardingPage() {
 
               <button
                 onClick={addEducation}
-                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-600 transition-colors text-base"
+              className="dashed-button"
               >
                 + Add Education
               </button>
@@ -495,12 +514,12 @@ export default function OnboardingPage() {
                   {skills.map((skill) => (
                     <span
                       key={skill}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary-100 text-primary-800 rounded-full text-sm"
+                  className="chip"
                     >
                       {skill}
                       <button
                         onClick={() => removeSkill(skill)}
-                        className="text-primary-600 hover:text-primary-800"
+                    className="text-white/70 hover:text-white"
                       >
                         ×
                       </button>
@@ -520,12 +539,12 @@ export default function OnboardingPage() {
               </div>
 
               {languages.map((lang, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                <div key={index} className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-4">
                   <div className="flex justify-between items-center">
                     <h3 className="font-semibold text-gray-800">Language {index + 1}</h3>
                     <button
                       onClick={() => removeLanguage(index)}
-                      className="text-red-600 hover:text-red-700 text-sm"
+                      className="text-red-300 hover:text-red-200 text-sm"
                     >
                       Remove
                     </button>
@@ -561,7 +580,7 @@ export default function OnboardingPage() {
 
               <button
                 onClick={addLanguage}
-                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-600 transition-colors text-base"
+              className="dashed-button"
               >
                 + Add Language
               </button>
@@ -663,14 +682,14 @@ export default function OnboardingPage() {
             <button
               onClick={() => setStep(Math.max(1, step - 1))}
               disabled={step === 1}
-              className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base"
+            className="secondary-button"
             >
               Previous
             </button>
             {step < totalSteps ? (
               <button
                 onClick={() => setStep(Math.min(totalSteps, step + 1))}
-                className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-base"
+              className="primary-button"
               >
                 Next
               </button>
@@ -678,7 +697,7 @@ export default function OnboardingPage() {
               <button
                 onClick={handleComplete}
                 disabled={loading}
-                className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base"
+              className="primary-button"
               >
                 {loading ? "Saving..." : "Complete"}
               </button>

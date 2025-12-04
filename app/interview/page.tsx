@@ -28,6 +28,13 @@ export default function InterviewPage() {
   const [isClosing, setIsClosing] = useState(false);
   const MAX_QUESTIONS = 5; // Maximum number of questions in the interview
 
+  const glassPanel =
+    "relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(15,23,42,0.45)]";
+  const subtleCard =
+    "rounded-3xl border border-white/10 bg-black/40 backdrop-blur-2xl";
+  const sectionLabel =
+    "text-[11px] uppercase tracking-[0.35em] text-white/60 font-semibold";
+
   // Audio states
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
 
@@ -1165,42 +1172,61 @@ export default function InterviewPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden bg-black text-white">
+      <div className="pointer-events-none absolute inset-0 opacity-90">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-950 via-slate-950 to-cyan-950" />
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)",
+            backgroundSize: "140px 140px",
+          }}
+        />
+        <div className="absolute -top-32 -left-10 h-96 w-96 rounded-full bg-purple-500/30 blur-[140px]" />
+        <div className="absolute bottom-0 right-[-10%] h-[32rem] w-[32rem] rounded-full bg-cyan-500/20 blur-[200px]" />
+      </div>
+
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 md:pl-64 transition-all duration-300">
+      <div className="relative z-10 flex-1 flex flex-col min-w-0 md:pl-72 transition-all duration-300">
         {/* Header */}
-        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex-shrink-0 z-10">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                AI Interview Practice
-              </h1>
-              {isInterviewing && questionCount > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <span className="text-blue-700 dark:text-blue-300 text-sm font-medium">Question {questionCount} of {MAX_QUESTIONS}</span>
-                </div>
-              )}
+        <header className={`${glassPanel} mx-4 mt-6 md:mx-10`}>
+          <div className="flex w-full flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className={sectionLabel}>Live practice cockpit</p>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <h1 className="text-3xl font-semibold leading-tight text-white">
+                  AI Interview Practice
+                </h1>
+                {isInterviewing && questionCount > 0 && (
+                  <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 bg-white/5 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-white/80">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
+                    Question {questionCount} of {MAX_QUESTIONS}
+                  </div>
+                )}
+              </div>
             </div>
             {isInterviewing && (
               <div className="flex items-center gap-2">
                 <button
                   onClick={toggleAudio}
-                  className={`p-2.5 rounded-lg transition-all ${isAudioEnabled
-                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40'
-                    }`}
+                  className={`rounded-2xl border px-4 py-2 transition ${
+                    isAudioEnabled
+                      ? "border-white/10 bg-white/5 text-white/80 hover:border-cyan-400/50 hover:text-white"
+                      : "border-red-500/30 bg-red-500/10 text-red-300 hover:border-red-400/60"
+                  }`}
                   title={isAudioEnabled ? "Mute AI voice" : "Unmute AI voice"}
                 >
-                  {isAudioEnabled ? <FiVolume2 className="text-lg" /> : <FiVolumeX className="text-lg" />}
+                  {isAudioEnabled ? <FiVolume2 className="text-base" /> : <FiVolumeX className="text-base" />}
                 </button>
                 <button
                   onClick={endInterview}
-                  className="flex items-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-all duration-200 border border-red-200 dark:border-red-800"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20"
                 >
-                  <FiX className="text-lg" />
-                  <span className="text-sm font-medium">End Interview</span>
+                  <FiX className="text-base" />
+                  End Interview
                 </button>
               </div>
             )}
@@ -1208,63 +1234,59 @@ export default function InterviewPage() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4">
-          <div className="max-w-4xl mx-auto w-full h-full flex flex-col relative z-10">
+        <div className="flex-1 overflow-y-auto px-4 pb-32 pt-6 md:px-10">
+          <div className="relative z-10 mx-auto flex h-full w-full max-w-4xl flex-col">
             {/* Main Interface */}
             <div className="flex-1 flex flex-col min-h-0">
               {!isInterviewing ? (
-                /* Start Interview Screen */
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 text-center border border-gray-200 dark:border-gray-700 flex-1 flex flex-col justify-center overflow-y-auto">
+                <div className={`${glassPanel} flex-1 overflow-y-auto p-8 text-center`}>
                   <div className="mb-8">
-                    <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-200 dark:border-blue-800">
-                      <FiMic className="text-4xl text-blue-600 dark:text-blue-400" />
+                    <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                      <FiMic className="text-4xl text-cyan-300" />
                     </div>
-                    <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-3">Ready to Practice?</h2>
-                    <p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed max-w-xl mx-auto">
-                      Start an AI-powered interview session. Answer questions naturally, and our AI will speak to you and provide intelligent follow-up questions.
+                    <h2 className="text-3xl font-semibold text-white">Ready to Practice?</h2>
+                    <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-white/70">
+                      Start an AI-powered interview session. Answer questions naturally, get instant coaching, and keep your experience perfectly aligned with the rest of JobDance.
                     </p>
                   </div>
 
-                  {/* Microphone Permission Status */}
-                  {microphonePermission === 'checking' && (
-                    <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                      <div className="flex items-center gap-3">
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent"></div>
-                        <p className="text-blue-700 dark:text-blue-300 text-sm font-medium">
-                          Checking microphone permission...
-                        </p>
+                  {microphonePermission === "checking" && (
+                    <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
+                      <div className="flex items-center gap-3 text-white/80">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-cyan-300 border-t-transparent" />
+                        <p className="text-sm font-medium">Checking microphone permission...</p>
                       </div>
                     </div>
                   )}
 
-                  {microphonePermission === 'prompt' && isIOS() && voiceInputMode && (
-                    <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                      <div className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {microphonePermission === "prompt" && isIOS() && voiceInputMode && (
+                    <div className="mb-6 rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-4 text-left">
+                      <div className="flex items-start gap-3 text-sm text-white/80">
+                        <svg className="mt-0.5 h-5 w-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                         </svg>
-                        <p className="text-blue-700 dark:text-blue-300 text-sm">
-                          When you click "Start Interview", your iPhone will prompt you to allow microphone access.
-                          Please tap <strong>"Allow"</strong> to enable voice input.
+                        <p>
+                          When you click <span className="font-semibold text-white">"Start Interview"</span>, your iPhone will prompt
+                          you to allow microphone access. Tap <span className="font-semibold text-white">Allow</span> to unlock live voice mode.
                         </p>
                       </div>
                     </div>
                   )}
 
-                  {microphonePermission === 'denied' && (
-                    <div className="mb-6 bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
+                  {microphonePermission === "denied" && (
+                    <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-left">
                       <div className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="mt-0.5 h-5 w-5 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
-                        <div className="flex-1">
-                          <p className="text-red-700 dark:text-red-400 text-sm font-semibold mb-1">Microphone Permission Denied</p>
-                          <p className="text-red-600 dark:text-red-500 text-sm mb-3">
+                        <div className="flex-1 text-sm text-white/80">
+                          <p className="mb-2 font-semibold text-red-200">Microphone permission denied</p>
+                          <p className="mb-3">
                             {isIOS()
-                              ? 'Go to Settings → Safari → Microphone and enable access, then refresh.'
+                              ? "Go to Settings → Safari → Microphone and enable access, then refresh."
                               : /Android/.test(navigator.userAgent)
-                                ? 'Please allow microphone access when prompted, or go to your browser settings and enable microphone permission for this website, then refresh.'
-                                : 'Please enable microphone access in your browser settings.'}
+                              ? "Allow microphone access when prompted, or enable it in your browser settings and refresh."
+                              : "Enable microphone access in your browser settings, then refresh."}
                           </p>
                           <button
                             type="button"
@@ -1272,47 +1294,39 @@ export default function InterviewPage() {
                               e.preventDefault();
                               e.stopPropagation();
 
-                              // CRITICAL FOR iOS: Call getUserMedia IMMEDIATELY in the click handler
-                              // No function calls, no delays - direct call to preserve user interaction context
                               if (!navigator.mediaDevices?.getUserMedia) {
-                                alert('Microphone access is not available in this browser.');
+                                alert("Microphone access is not available in this browser.");
                                 return;
                               }
 
                               try {
-                                console.log('🎤 Requesting microphone permission (direct button call)...');
-                                setMicrophonePermission('checking');
-
-                                // Direct call - create promise immediately, then await
+                                setMicrophonePermission("checking");
                                 const stream = await navigator.mediaDevices.getUserMedia({
                                   audio: {
                                     echoCancellation: true,
                                     noiseSuppression: true,
-                                    autoGainControl: true
-                                  }
+                                    autoGainControl: true,
+                                  },
                                 });
 
-                                stream.getTracks().forEach(track => track.stop());
-                                setMicrophonePermission('granted');
+                                stream.getTracks().forEach((track) => track.stop());
+                                setMicrophonePermission("granted");
                                 if (speechRecognitionRef.current) {
                                   speechRecognitionRef.current.setMicrophonePermissionGranted(true);
                                 }
-                                console.log('✅ Microphone permission granted');
                               } catch (error: any) {
-                                console.error('❌ Microphone permission error:', error);
-                                setMicrophonePermission('denied');
+                                setMicrophonePermission("denied");
                                 if (speechRecognitionRef.current) {
                                   speechRecognitionRef.current.setMicrophonePermissionGranted(false);
                                 }
-
-                                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                                  alert('Microphone permission was denied.\n\nTo enable:\n1. Tap the "AA" icon in Safari address bar\n2. Select "Website Settings"\n3. Set Microphone to "Allow"\n4. Refresh the page');
+                                if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+                                  alert('Microphone permission was denied.\n\nTap the lock icon in your address bar and set Microphone to "Allow", then refresh.');
                                 } else {
                                   alert(`Error: ${error.message || error.name}`);
                                 }
                               }
                             }}
-                            className="text-sm px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-800 dark:hover:bg-red-900 text-white rounded-lg transition-colors font-medium"
+                            className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
                           >
                             Request Permission
                           </button>
@@ -1321,41 +1335,39 @@ export default function InterviewPage() {
                     </div>
                   )}
 
-                  {microphonePermission === 'granted' && (
-                    <div className="mb-6 bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
-                      <div className="flex items-center gap-3">
-                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {microphonePermission === "granted" && (
+                    <div className="mb-6 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-left">
+                      <div className="flex items-center gap-3 text-sm font-medium text-emerald-100">
+                        <svg className="h-5 w-5 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <p className="text-green-700 dark:text-green-300 text-sm font-medium">
-                          Microphone permission granted. Ready to start!
-                        </p>
+                        Microphone permission granted. Ready to start!
                       </div>
                     </div>
                   )}
 
-                  <div className="mb-8 text-left max-w-xl mx-auto">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-5 border border-gray-200 dark:border-gray-600">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="mx-auto mb-8 max-w-xl text-left">
+                    <div className="rounded-2xl border border-white/10 bg-black/40 p-5">
+                      <div className="mb-4 flex items-center gap-3">
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-2">
+                          <svg className="h-5 w-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                           </svg>
                         </div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white text-base">Tips for Success</h3>
+                        <h3 className="text-base font-semibold text-white">Tips for success</h3>
                       </div>
-                      <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-2.5">
+                      <ul className="space-y-2.5 text-sm text-white/80">
                         <li className="flex items-start gap-3">
-                          <span className="text-blue-600 dark:text-blue-400 mt-1 font-semibold">•</span>
-                          <span>Be specific with concrete examples from your experience</span>
+                          <span className="mt-1 text-cyan-300">•</span>
+                          <span>Be specific with concrete examples from your experience.</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-blue-600 dark:text-blue-400 mt-1 font-semibold">•</span>
-                          <span>Use the STAR method (Situation, Task, Action, Result)</span>
+                          <span className="mt-1 text-cyan-300">•</span>
+                          <span>Use the STAR method (Situation, Task, Action, Result).</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-blue-600 dark:text-blue-400 mt-1 font-semibold">•</span>
-                          <span>Take time to think before answering</span>
+                          <span className="mt-1 text-cyan-300">•</span>
+                          <span>Pause to collect your thoughts before answering.</span>
                         </li>
                       </ul>
                     </div>
@@ -1363,28 +1375,25 @@ export default function InterviewPage() {
 
                   <button
                     onClick={startInterview}
-                    disabled={microphonePermission === 'denied' && voiceInputMode}
-                    className={`w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-xl font-semibold text-base transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] transform flex items-center justify-center gap-2 ${microphonePermission === 'denied' && voiceInputMode
-                      ? 'opacity-50 cursor-not-allowed'
-                      : ''
-                      }`}
+                    disabled={microphonePermission === "denied" && voiceInputMode}
+                    className={`flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 px-6 py-4 text-base font-semibold text-white transition hover:from-cyan-400 hover:to-blue-400 ${microphonePermission === "denied" && voiceInputMode ? "cursor-not-allowed opacity-50" : ""}`}
                   >
-                    <FiMic className="w-5 h-5" />
-                    {isIOS() && microphonePermission === 'prompt' && voiceInputMode
-                      ? 'Enable Mic & Start'
-                      : 'Start Interview'}
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <FiMic className="h-5 w-5" />
+                    {isIOS() && microphonePermission === "prompt" && voiceInputMode
+                      ? "Enable Mic & Start"
+                      : "Start Interview"}
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                   </button>
                 </div>
               ) : (
                 /* Interview Session */
-                <div className="flex-1 flex flex-col min-h-0 space-y-4">
+                <div className="flex-1 flex flex-col min-h-0 gap-4">
                   {/* Messages Chat Container */}
                   <div
                     ref={messagesContainerRef}
-                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 flex-1 min-h-0 overflow-y-auto border border-gray-200 dark:border-gray-700"
+                    className={`${subtleCard} flex-1 min-h-0 overflow-y-auto p-6`}
                   >
                     <div className="space-y-4">
                       {messages.map((message, index) => (
@@ -1392,33 +1401,34 @@ export default function InterviewPage() {
                           key={index}
                           className={`flex items-start gap-3 ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}
                         >
-                          {/* Avatar */}
-                          <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${message.role === "user"
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                            }`}>
+                          <div
+                            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border ${message.role === "user"
+                              ? "border-transparent bg-gradient-to-r from-cyan-500 to-blue-500 text-white"
+                              : "border-white/10 bg-white/5 text-white/80"
+                              }`}
+                          >
                             {message.role === "user" ? (
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                               </svg>
                             ) : (
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                               </svg>
                             )}
                           </div>
 
-                          {/* Message Bubble */}
-                          <div className={`flex flex-col gap-1 max-w-[75%] ${message.role === "user" ? "items-end" : "items-start"}`}>
+                          <div className={`flex max-w-[75%] flex-col gap-1 ${message.role === "user" ? "items-end" : "items-start"}`}>
                             <div
-                              className={`rounded-2xl px-4 py-3 ${message.role === "user"
-                                ? "bg-blue-600 text-white"
-                                : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                                }`}
+                              className={`rounded-2xl px-4 py-3 ${
+                                message.role === "user"
+                                  ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-[0_10px_30px_rgba(6,182,212,0.35)]"
+                                  : "bg-white/10 text-white"
+                              }`}
                             >
                               <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                             </div>
-                            <span className={`text-xs text-gray-500 dark:text-gray-400 px-2 ${message.role === "user" ? "text-right" : "text-left"}`}>
+                            <span className={`px-2 text-xs text-white/50 ${message.role === "user" ? "text-right" : "text-left"}`}>
                               {message.role === "user" ? "You" : "AI Interviewer"}
                             </span>
                           </div>
@@ -1426,17 +1436,17 @@ export default function InterviewPage() {
                       ))}
                       {isLoading && (
                         <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
-                            <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5">
+                            <svg className="h-5 w-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
                           </div>
-                          <div className="bg-gray-100 dark:bg-gray-700 rounded-2xl px-4 py-3">
-                            <div className="flex gap-2 items-center">
-                              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-                              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
-                              <span className="text-gray-600 dark:text-gray-400 text-sm ml-2">AI is thinking...</span>
+                          <div className="rounded-2xl bg-white/10 px-4 py-3 text-white/80">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-300" />
+                              <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-300" style={{ animationDelay: "0.2s" }} />
+                              <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-300" style={{ animationDelay: "0.4s" }} />
+                              <span className="ml-2 text-sm text-white/70">AI is thinking...</span>
                             </div>
                           </div>
                         </div>
@@ -1447,26 +1457,27 @@ export default function InterviewPage() {
                   </div>
 
                   {/* Answer Input */}
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 border border-gray-200 dark:border-gray-700 flex-shrink-0">
+                  <div className={`${glassPanel} flex-shrink-0 p-4`}>
                     {/* Feedback Message */}
                     {feedbackMessage && (
-                      <div className="mb-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl flex items-start gap-3 animate-fade-in">
-                        <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="mb-3 flex items-start gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3 text-amber-100 animate-in fade-in">
+                        <svg className="mt-0.5 h-5 w-5 text-amber-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <p className="text-sm text-yellow-700 dark:text-yellow-300">{feedbackMessage}</p>
+                        <p className="text-sm text-amber-50">{feedbackMessage}</p>
                       </div>
                     )}
 
                     {/* Voice Input Mode Toggle */}
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="mb-3 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setVoiceInputMode(!voiceInputMode)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${voiceInputMode
-                            ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600"
-                            }`}
+                          className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                            voiceInputMode
+                              ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-100"
+                              : "border-white/10 bg-white/5 text-white/70"
+                          }`}
                         >
                           {voiceInputMode ? (
                             <>
@@ -1482,13 +1493,13 @@ export default function InterviewPage() {
                         </button>
                       </div>
                       {isAISpeaking && (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                          <div className="flex gap-1">
-                            <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                            <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                        <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="flex gap-1 text-cyan-200">
+                            <div className="h-2 w-2 rounded-full bg-cyan-300 animate-bounce"></div>
+                            <div className="h-2 w-2 rounded-full bg-cyan-300 animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                            <div className="h-2 w-2 rounded-full bg-cyan-300 animate-bounce" style={{ animationDelay: "0.4s" }}></div>
                           </div>
-                          <span className="text-blue-700 dark:text-blue-300 text-sm font-medium">AI speaking...</span>
+                          <span className="text-sm font-medium text-white/80">AI speaking...</span>
                         </div>
                       )}
                     </div>
@@ -1497,12 +1508,14 @@ export default function InterviewPage() {
                       /* Voice Input Mode */
                       <div className="space-y-3">
                         {(interimTranscript || isListening) && (
-                          <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-800">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-pulse"></div>
-                              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Live Transcription</span>
+                          <div className="rounded-2xl border border-cyan-400/40 bg-cyan-500/10 p-4">
+                            <div className="mb-2 flex items-center gap-2">
+                              <div className="h-2 w-2 animate-pulse rounded-full bg-cyan-300"></div>
+                              <span className="text-xs font-semibold uppercase tracking-wide text-cyan-100">
+                                Live transcription
+                              </span>
                             </div>
-                            <p className="text-gray-900 dark:text-white text-sm leading-relaxed min-h-[20px]">
+                            <p className="min-h-[20px] text-sm leading-relaxed text-white">
                               {interimTranscript || (isListening ? "Listening..." : "")}
                             </p>
                           </div>
@@ -1518,10 +1531,11 @@ export default function InterviewPage() {
                               }
                             }}
                             disabled={isAISpeaking || isLoading}
-                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform active:scale-[0.98] touch-manipulation ${isListening
-                              ? "bg-red-600 hover:bg-red-700 text-white"
-                              : "bg-blue-600 hover:bg-blue-700 text-white"
-                              }`}
+                            className={`flex flex-1 touch-manipulation transform items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 shadow-[0_10px_30px_rgba(6,182,212,0.3)] ${
+                              isListening
+                                ? "bg-red-500/80 hover:bg-red-500 text-white"
+                                : "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
+                            }`}
                           >
                             {isListening ? (
                               <>
@@ -1537,22 +1551,22 @@ export default function InterviewPage() {
                           </button>
                         </div>
                         {!speechRecognitionRef.current?.isSupported() && (
-                          <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                            <svg className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-amber-100">
+                            <svg className="w-4 h-4 flex-shrink-0 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
-                            <p className="text-yellow-700 dark:text-yellow-300 text-xs font-medium">
+                            <p className="text-xs font-medium">
                               Voice input may not be supported. Use text mode or try Chrome/Edge/Safari.
                             </p>
                           </div>
                         )}
                         {speechRecognitionRef.current?.isSupported() && isIOS() && !isListening && !isAISpeaking && (
-                          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                            <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-white/70">
+                            <svg className="w-4 h-4 flex-shrink-0 text-cyan-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <p className="text-blue-700 dark:text-blue-300 text-xs font-medium">
-                              <span className="font-semibold">iOS:</span> Click mic button to start voice input.
+                            <p className="text-xs font-medium">
+                              <span className="font-semibold text-white">iOS:</span> Click the mic button to start voice input.
                             </p>
                           </div>
                         )}
@@ -1571,19 +1585,19 @@ export default function InterviewPage() {
                               }
                             }}
                             placeholder="Type your answer..."
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none transition-all duration-200 text-sm leading-relaxed"
+                            className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm leading-relaxed text-white placeholder:text-white/40 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 transition-all duration-200"
                             rows={3}
                             disabled={isLoading || isAISpeaking}
                           />
-                          <div className="absolute bottom-3 right-3 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                            <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500">Enter</kbd>
+                          <div className="absolute bottom-3 right-3 flex items-center gap-1 text-xs text-white/50">
+                            <kbd className="rounded border border-white/10 bg-white/10 px-2 py-1 text-white/80">Enter</kbd>
                             <span>to send</span>
                           </div>
                         </div>
                         <button
                           onClick={() => submitAnswer()}
                           disabled={!userAnswer.trim() || isLoading || isAISpeaking}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform active:scale-[0.98]"
+                          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 px-4 py-3 text-sm font-semibold text-white transition duration-200 hover:from-cyan-400 hover:to-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <FiSend className="w-4 h-4" />
                           <span>Send Answer</span>
