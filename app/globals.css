@@ -105,6 +105,13 @@
     @apply w-full min-w-0 rounded-2xl border border-white/15 bg-black/40 px-3 py-2 text-base text-white placeholder:text-white/40 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30;
   }
 
+  /* Allow native date/month inputs to shrink with the layout */
+  .onboarding-shell input[type="date"],
+  .onboarding-shell input[type="month"] {
+    min-width: 0;
+    width: 100%;
+  }
+
   .onboarding-shell label {
     @apply text-sm font-medium text-white/80;
   }
