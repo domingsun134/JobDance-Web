@@ -1,5 +1,6 @@
 'use client';
 
+import Logo from '@/components/Logo';
 import { motion } from 'framer-motion';
 import { Github, Twitter, Linkedin, Mail } from 'lucide-react';
 
@@ -25,11 +26,10 @@ export function Footer() {
                     {/* Brand */}
                     <div className="lg:col-span-2">
                         <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            className="flex items-center gap-3 mb-4"
+                            whileHover={{ scale: 1.03 }}
+                            className="flex items-center mb-4"
                         >
-                            <img src="/logo.png" alt="JobDance.ai" className="w-10 h-10" />
-                            <span className="text-2xl text-white">JobDance<span className="text-cyan-400">.ai</span></span>
+                            <Logo orientation="inline" className="scale-95 sm:scale-100 origin-left" />
                         </motion.div>
                         <p className="text-gray-400 mb-6 leading-relaxed">
                             Empowering job seekers with AI-powered tools to accelerate their career growth and land their dream jobs.
