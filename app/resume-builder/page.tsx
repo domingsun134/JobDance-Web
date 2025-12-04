@@ -15,6 +15,11 @@ interface Message {
     content: string;
 }
 
+const glassPanel =
+    "rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(15,23,42,0.45)]";
+const subtleCard =
+    "rounded-3xl border border-white/10 bg-black/35 backdrop-blur-2xl";
+
 export default function ResumeBuilderPage() {
     const router = useRouter();
     const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -382,49 +387,74 @@ export default function ResumeBuilderPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black text-white">
+                <div className="pointer-events-none absolute inset-0 opacity-90">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-950 via-slate-950 to-cyan-950" />
+                    <div
+                        className="absolute inset-0 opacity-30"
+                        style={{
+                            backgroundImage:
+                                "linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)",
+                            backgroundSize: "140px 140px",
+                        }}
+                    />
+                    <div className="absolute -top-32 -left-10 h-96 w-96 rounded-full bg-purple-500/30 blur-[140px]" />
+                    <div className="absolute bottom-0 right-[-10%] h-[32rem] w-[32rem] rounded-full bg-cyan-500/20 blur-[200px]" />
+                </div>
+                <div className="relative z-10 h-16 w-16 animate-spin rounded-full border-2 border-white/20 border-t-cyan-400" />
             </div>
         );
     }
 
     return (
-        <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
-            {/* Mobile Sidebar Overlay */}
+        <div className="relative min-h-screen overflow-hidden bg-black text-white">
+            <div className="pointer-events-none absolute inset-0 opacity-90">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-950 via-slate-950 to-cyan-950" />
+                <div
+                    className="absolute inset-0 opacity-30"
+                    style={{
+                        backgroundImage:
+                            "linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)",
+                        backgroundSize: "140px 140px",
+                    }}
+                />
+                <div className="absolute -top-32 -left-10 h-96 w-96 rounded-full bg-purple-500/30 blur-[140px]" />
+                <div className="absolute bottom-0 right-[-10%] h-[32rem] w-[32rem] rounded-full bg-cyan-500/20 blur-[200px]" />
+            </div>
+
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+                    className="fixed inset-0 z-20 bg-black/70 md:hidden"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
-            {/* Sidebar */}
             <Sidebar />
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0 md:flex-row h-full md:pl-64 transition-all duration-300">
+            <div className="relative z-10 flex min-h-screen flex-col md:pl-72">
+                <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-32 pt-6 md:px-10">
+                    {/* Mobile Header */}
+                    <div className="mb-6 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:hidden">
+                        <button onClick={() => setSidebarOpen(true)} className="text-white/70">
+                            <FiMenu size={20} />
+                        </button>
+                        <h1 className="text-base font-semibold text-white">Resume Builder</h1>
+                        <div className="w-5" />
+                    </div>
 
-                {/* Mobile Header */}
-                <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
-                    <button onClick={() => setSidebarOpen(true)} className="text-gray-600 dark:text-gray-300">
-                        <FiMenu size={24} />
-                    </button>
-                    <h1 className="font-semibold text-gray-900 dark:text-white">Resume Builder</h1>
-                    <div className="w-6"></div> {/* Spacer */}
-                </div>
-
-                {/* Left Panel: Chat Interface */}
-                <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-700 h-[50vh] md:h-full">
+                    <div className="flex flex-1 flex-col gap-6 md:flex-row">
+                        {/* Left Panel: Chat Interface */}
+                        <div className={`${glassPanel} flex min-h-[50vh] flex-1 flex-col`}>
                     {/* Chat Header */}
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-cyan-200">
                                 <FiCpu />
                             </div>
                             <div>
-                                <h2 className="font-semibold text-gray-900 dark:text-white">AI Assistant</h2>
-                                <p className="text-xs text-green-500 flex items-center gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                <h2 className="text-lg font-semibold text-white">AI Assistant</h2>
+                                <p className="flex items-center gap-2 text-xs font-medium text-emerald-300">
+                                    <span className="h-2 w-2 rounded-full bg-emerald-300" />
                                     Online
                                 </p>
                             </div>
@@ -432,33 +462,38 @@ export default function ResumeBuilderPage() {
                     </div>
 
                     {/* Chat Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === 'user'
-                                    ? 'bg-blue-600 text-white rounded-br-none'
-                                    : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-bl-none shadow-sm'
-                                    }`}>
-                                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                </div>
-                            </div>
-                        ))}
-                        {isTyping && (
-                            <div className="flex justify-start">
-                                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm">
-                                    <div className="flex gap-1">
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></span>
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></span>
+                    <div className="flex-1 overflow-y-auto py-4">
+                        <div className="space-y-4">
+                            {messages.map((msg, idx) => (
+                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div
+                                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                                            msg.role === 'user'
+                                                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-none shadow-[0_10px_30px_rgba(6,182,212,0.35)]'
+                                                : 'rounded-bl-none border border-white/5 bg-white/10 text-white'
+                                        }`}
+                                    >
+                                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
+                            ))}
+                            {isTyping && (
+                                <div className="flex justify-start">
+                                    <div className="rounded-2xl rounded-bl-none border border-white/10 bg-white/5 px-4 py-3">
+                                        <div className="flex gap-1 text-white/70">
+                                            <span className="h-2 w-2 animate-bounce rounded-full bg-cyan-300"></span>
+                                            <span className="h-2 w-2 animate-bounce rounded-full bg-cyan-300 delay-100"></span>
+                                            <span className="h-2 w-2 animate-bounce rounded-full bg-cyan-300 delay-200"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
                     </div>
 
                     {/* Chat Input */}
-                    <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                    <div className="border-t border-white/10 pt-4">
                         <div className="flex gap-2">
                             <input
                                 ref={inputRef}
@@ -467,42 +502,46 @@ export default function ResumeBuilderPage() {
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Type your answer..."
-                                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                                className="flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                                 disabled={isTyping}
                             />
                             <button
                                 onClick={handleSendMessage}
                                 disabled={!input.trim() || isTyping}
-                                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 p-2 text-white transition hover:from-cyan-400 hover:to-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                <FiSend size={20} />
+                                <FiSend size={18} />
                             </button>
                         </div>
                     </div>
                 </div>
 
                 {/* Right Panel: Resume Preview */}
-                <div className="flex-1 bg-gray-100 dark:bg-gray-950 overflow-y-auto p-4 md:p-8 h-[50vh] md:h-full border-t md:border-t-0 border-gray-200 dark:border-gray-700">
-                    <div className="max-w-[210mm] mx-auto">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Live Preview</h2>
-                            <button
-                                onClick={handleExportPDF}
-                                disabled={isExporting}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isExporting ? (
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                                ) : (
-                                    <FiDownload size={16} />
-                                )}
-                                <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
-                            </button>
-                        </div>
-                        <div id="resume-preview" className="shadow-2xl rounded-lg overflow-hidden bg-white">
-                            <ResumePreview profile={profile} />
+                <div className={`${glassPanel} flex min-h-[50vh] flex-1 flex-col`}>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+                        <h2 className="text-lg font-semibold text-white">Live Preview</h2>
+                        <button
+                            onClick={handleExportPDF}
+                            disabled={isExporting}
+                            className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80 transition hover:border-cyan-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {isExporting ? (
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-cyan-400"></div>
+                            ) : (
+                                <FiDownload size={16} />
+                            )}
+                            <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                        <div className="mx-auto max-w-[210mm]">
+                            <div id="resume-preview" className="overflow-hidden rounded-xl bg-white shadow-2xl">
+                                <ResumePreview profile={profile} />
+                            </div>
                         </div>
                     </div>
+                </div>
+                    </div> {/* close flex container */}
                 </div>
             </div>
 
