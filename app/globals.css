@@ -456,6 +456,15 @@ input[type="checkbox"]:focus {
   color: white !important;
 }
 
+/* Fix date input width to match other inputs */
+input[type="date"],
+input[type="month"],
+input[type="time"],
+input[type="datetime-local"] {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
 /* Safe area for mobile devices */
 @supports (padding: max(0px)) {
   .safe-area-inset-bottom {
