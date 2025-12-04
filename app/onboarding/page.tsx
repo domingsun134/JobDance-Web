@@ -601,7 +601,7 @@ export default function OnboardingPage() {
                   type="date"
                   value={availability.startDate}
                   onChange={(e) => setAvailability({ ...availability, startDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-base text-gray-900"
+                  className="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-base text-gray-900"
                 />
               </div>
 
