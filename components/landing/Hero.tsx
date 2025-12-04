@@ -1,5 +1,6 @@
 'use client';
 
+import Logo from '@/components/Logo';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles, Play } from 'lucide-react';
 import Link from 'next/link';
@@ -55,10 +56,9 @@ export function Hero() {
                 <div className="flex items-center justify-between">
                     <motion.div
                         whileHover={{ scale: 1.05 }}
-                        className="flex items-center gap-3"
+                        className="flex items-center"
                     >
-                        <img src="/logo.png" alt="JobDance.ai" className="w-10 h-10" />
-                        <span className="text-2xl text-white">JobDance<span className="text-cyan-400">.ai</span></span>
+                        <Logo orientation="inline" />
                     </motion.div>
 
                     <div className="hidden md:flex items-center gap-8">
