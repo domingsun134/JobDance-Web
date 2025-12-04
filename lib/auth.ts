@@ -136,6 +136,18 @@ export async function registerUser(email: string, password: string, captchaToken
     }
   }
 
+  // Send welcome email (fire and forget)
+  fetch('/api/send-welcome', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: email,
+      name: email.split('@')[0], // Fallback name
+    }),
+  }).catch(err => console.error('Failed to send welcome email:', err));
+
   return {
     id: authData.user.id,
     email: email,
