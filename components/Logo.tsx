@@ -2,11 +2,35 @@
 
 import Image from "next/image";
 
-export default function Logo({ className = "" }: { className?: string }) {
+type LogoOrientation = "stacked" | "inline";
+
+type LogoProps = {
+  className?: string;
+  orientation?: LogoOrientation;
+};
+
+export default function Logo({ className = "", orientation = "stacked" }: LogoProps) {
+  const isInline = orientation === "inline";
+
+  const containerClasses = [
+    "flex animate-fade-in",
+    isInline
+      ? "flex-row items-center justify-start gap-3 sm:gap-4"
+      : "flex-col items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-8",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const barHeightClass = isInline ? "h-10 sm:h-12" : "h-16 sm:h-24";
+  const imageWidthClass = isInline
+    ? "max-w-[150px] sm:max-w-[220px]"
+    : "max-w-[200px] sm:max-w-[280px] md:max-w-[320px]";
+
   return (
-    <div className={`flex flex-col items-center justify-center mb-4 sm:mb-8 animate-fade-in ${className}`}>
+    <div className={containerClasses}>
       {/* Animated Bars - Centered to allow up and down animation */}
-      <div className="flex items-center justify-center gap-1.5 sm:gap-2.5 h-16 sm:h-24 mb-2 sm:mb-4">
+      <div className={`flex items-center justify-center gap-1.5 sm:gap-2.5 ${barHeightClass}`}>
         {/* Bar 1 - Short, timing 1 */}
         <div
           className="w-3 sm:w-4 bg-gradient-to-b from-blue-400 to-blue-300 rounded-lg animate-bar-short"
@@ -39,7 +63,7 @@ export default function Logo({ className = "" }: { className?: string }) {
         alt="JobDance.ai Logo"
         width={300}
         height={80}
-        className="h-auto w-auto max-w-[200px] sm:max-w-[280px] md:max-w-[320px]"
+        className={`h-auto w-auto ${imageWidthClass}`}
         priority
       />
     </div>
