@@ -36,6 +36,28 @@ const statCard =
 const sectionLabel =
   "text-[11px] uppercase tracking-[0.35em] text-white/60 font-semibold";
 
+type TimelineEntry = {
+  startDate?: string | null;
+  endDate?: string | null;
+  current?: boolean;
+};
+
+const getRecencyScore = (entry: TimelineEntry) => {
+  const toTimestamp = (value?: string | null) =>
+    value ? new Date(value).getTime() : 0;
+
+  if (entry.current) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  if (entry.endDate) {
+    return toTimestamp(entry.endDate);
+  }
+  return toTimestamp(entry.startDate);
+};
+
+const sortByRecency = <T extends TimelineEntry>(entries: T[]) =>
+  [...entries].sort((a, b) => getRecencyScore(b) - getRecencyScore(a));
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -102,6 +124,9 @@ export default function DashboardPage() {
       helper: "Communication range",
     },
   ];
+
+  const sortedWorkExperience = sortByRecency(profile.workExperience);
+  const sortedEducation = sortByRecency(profile.education);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black pb-28 text-white">
@@ -253,7 +278,7 @@ export default function DashboardPage() {
                   </h3>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
-                  {profile.workExperience.map((exp) => (
+                  {sortedWorkExperience.map((exp) => (
                     <div
                       key={exp.id}
                       className="rounded-2xl border border-white/10 bg-black/40 p-4 transition hover:border-purple-400/40"
@@ -295,7 +320,7 @@ export default function DashboardPage() {
                   </h3>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
-                  {profile.education.map((edu) => (
+                  {sortedEducation.map((edu) => (
                     <div
                       key={edu.id}
                       className="rounded-2xl border border-white/10 bg-black/40 p-4"
