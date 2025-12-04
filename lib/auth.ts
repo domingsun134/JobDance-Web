@@ -65,11 +65,14 @@ export interface Salary {
 }
 
 // Register a new user
-export async function registerUser(email: string, password: string): Promise<User> {
+export async function registerUser(email: string, password: string, captchaToken?: string): Promise<User> {
   // Sign up with Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      captchaToken,
+    },
   });
 
   if (authError) {
@@ -141,10 +144,13 @@ export async function registerUser(email: string, password: string): Promise<Use
 }
 
 // Login user
-export async function loginUser(email: string, password: string): Promise<User> {
+export async function loginUser(email: string, password: string, captchaToken?: string): Promise<User> {
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password,
+    options: {
+      captchaToken,
+    },
   });
 
   if (authError) {
