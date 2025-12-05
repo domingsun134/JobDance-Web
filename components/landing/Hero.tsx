@@ -20,7 +20,7 @@ export function Hero() {
                 }} />
             </div>
 
-            {/* Floating orbs */}
+            {/* Floating orbs - Optimized for mobile */}
             <motion.div
                 className="absolute top-20 left-10 w-72 h-72 bg-purple-500/30 rounded-full blur-3xl"
                 animate={{
@@ -31,6 +31,11 @@ export function Hero() {
                     duration: 8,
                     repeat: Infinity,
                     ease: "easeInOut"
+                }}
+                style={{
+                    willChange: 'transform',
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
                 }}
             />
             <motion.div
@@ -44,19 +49,30 @@ export function Hero() {
                     repeat: Infinity,
                     ease: "easeInOut"
                 }}
+                style={{
+                    willChange: 'transform',
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                }}
             />
 
             {/* Navigation */}
             <motion.nav
                 initial={{ y: -100 }}
                 animate={{ y: 0 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
                 className="relative container mx-auto px-4 py-6"
+                style={{
+                    willChange: 'transform',
+                }}
             >
                 <div className="flex items-center justify-between">
                     <motion.div
                         whileHover={{ scale: 1.05 }}
                         className="flex items-center"
+                        style={{
+                            willChange: 'transform',
+                        }}
                     >
                         <Logo orientation="inline" />
                     </motion.div>
@@ -85,8 +101,11 @@ export function Hero() {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2, duration: 0.6 }}
+                        transition={{ delay: 0.1, duration: 0.4 }}
                         className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full mb-8"
+                        style={{
+                            willChange: 'opacity, transform',
+                        }}
                     >
                         <Sparkles className="w-4 h-4 text-cyan-400" />
                         <span className="text-sm text-gray-300">AI-Powered Career Enhancement Platform</span>
@@ -94,10 +113,13 @@ export function Hero() {
 
                     {/* Main Heading */}
                     <motion.h1
-                        initial={{ opacity: 0, y: 30 }}
+                        initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4, duration: 0.8 }}
+                        transition={{ delay: 0.2, duration: 0.5 }}
                         className="text-6xl md:text-7xl lg:text-8xl mb-8 max-w-4xl"
+                        style={{
+                            willChange: 'opacity, transform',
+                        }}
                     >
                         <span className="text-white">Transform Your </span>
                         <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
@@ -108,20 +130,26 @@ export function Hero() {
 
                     {/* Subheading */}
                     <motion.p
-                        initial={{ opacity: 0, y: 30 }}
+                        initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6, duration: 0.8 }}
+                        transition={{ delay: 0.3, duration: 0.5 }}
                         className="text-xl md:text-2xl text-gray-400 mb-12 max-w-3xl leading-relaxed"
+                        style={{
+                            willChange: 'opacity, transform',
+                        }}
                     >
                         Build standout resumes, master interviews with AI coaching, and land your dream job 3x faster
                     </motion.p>
 
                     {/* CTA Buttons */}
                     <motion.div
-                        initial={{ opacity: 0, y: 30 }}
+                        initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.8, duration: 0.8 }}
+                        transition={{ delay: 0.4, duration: 0.5 }}
                         className="flex flex-col sm:flex-row gap-4 mb-16"
+                        style={{
+                            willChange: 'opacity, transform',
+                        }}
                     >
                         <Link href="/auth/login">
                             <motion.button
@@ -137,10 +165,13 @@ export function Hero() {
 
                     {/* Stats */}
                     <motion.div
-                        initial={{ opacity: 0, y: 30 }}
+                        initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1, duration: 0.8 }}
+                        transition={{ delay: 0.5, duration: 0.5 }}
                         className="grid grid-cols-3 gap-12 pt-8 border-t border-white/10"
+                        style={{
+                            willChange: 'opacity, transform',
+                        }}
                     >
                         <div className="text-center">
                             <div className="text-4xl text-white mb-2">50K+</div>
@@ -151,7 +182,7 @@ export function Hero() {
                             <div className="text-sm text-gray-400">Success Rate</div>
                         </div>
                         <div className="text-center">
-                            <div className="text-4xl text-white mb-2">4.9★</div>
+                            <div className="text-4xl text-white mb-2">4.9?</div>
                             <div className="text-sm text-gray-400">User Rating</div>
                         </div>
                     </motion.div>
@@ -162,18 +193,31 @@ export function Hero() {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 1.2 }}
+                transition={{ delay: 0.6 }}
                 className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
+                style={{
+                    willChange: 'opacity',
+                }}
             >
                 <motion.div
                     animate={{ y: [0, 10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                     className="w-6 h-10 border-2 border-white/30 rounded-full flex items-start justify-center p-2"
+                    style={{
+                        willChange: 'transform',
+                        backfaceVisibility: 'hidden',
+                        WebkitBackfaceVisibility: 'hidden',
+                    }}
                 >
                     <motion.div
                         animate={{ y: [0, 12, 0] }}
-                        transition={{ duration: 2, repeat: Infinity }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                         className="w-1 h-2 bg-white/50 rounded-full"
+                        style={{
+                            willChange: 'transform',
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                        }}
                     />
                 </motion.div>
             </motion.div>

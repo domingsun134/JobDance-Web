@@ -48,21 +48,32 @@ export function HowItWorks() {
                     ease: "linear"
                 }}
                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-purple-500/10 rounded-full"
+                style={{
+                    willChange: 'transform',
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                }}
             />
 
             <div className="relative container mx-auto px-4">
                 <motion.div
                     ref={ref}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-                    transition={{ duration: 0.8 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                    transition={{ duration: 0.5 }}
                     className="text-center max-w-3xl mx-auto mb-20"
+                    style={{
+                        willChange: 'opacity, transform',
+                    }}
                 >
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.6 }}
+                        transition={{ duration: 0.4 }}
                         className="inline-block px-4 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-full mb-6"
+                        style={{
+                            willChange: 'opacity, transform',
+                        }}
                     >
                         <span className="text-cyan-400 text-sm">HOW IT WORKS</span>
                     </motion.div>
@@ -82,14 +93,20 @@ export function HowItWorks() {
                         {steps.map((step, index) => (
                             <motion.div
                                 key={index}
-                                initial={{ opacity: 0, y: 50 }}
-                                animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-                                transition={{ duration: 0.6, delay: index * 0.2 }}
+                                initial={{ opacity: 0, y: 30 }}
+                                animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+                                transition={{ duration: 0.4, delay: index * 0.1 }}
                                 className="relative"
+                                style={{
+                                    willChange: 'opacity, transform',
+                                }}
                             >
                                 <motion.div
                                     whileHover={{ y: -10 }}
                                     className="relative p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl hover:border-white/20 transition-all duration-300"
+                                    style={{
+                                        willChange: 'transform',
+                                    }}
                                 >
                                     {/* Step number */}
                                     <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-r from-black to-gray-900 border-2 border-purple-500 rounded-xl flex items-center justify-center">
@@ -100,6 +117,9 @@ export function HowItWorks() {
                                     <motion.div
                                         whileHover={{ scale: 1.1, rotate: 5 }}
                                         className={`w-16 h-16 bg-gradient-to-r ${step.color} rounded-2xl flex items-center justify-center mb-6 mt-4`}
+                                        style={{
+                                            willChange: 'transform',
+                                        }}
                                     >
                                         <step.icon className="w-8 h-8 text-white" />
                                     </motion.div>
@@ -113,8 +133,11 @@ export function HowItWorks() {
                                     <motion.div
                                         initial={{ opacity: 0, x: -20 }}
                                         animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
-                                        transition={{ duration: 0.6, delay: index * 0.2 + 0.3 }}
+                                        transition={{ duration: 0.4, delay: index * 0.1 + 0.2 }}
                                         className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10"
+                                        style={{
+                                            willChange: 'opacity, transform',
+                                        }}
                                     >
                                         <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full flex items-center justify-center">
                                             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">

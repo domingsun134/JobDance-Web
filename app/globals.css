@@ -279,43 +279,43 @@ html {
 
   /* At 0%: start at min */
   0% {
-    height: 25%;
+    transform: scaleY(0.25);
   }
 
   /* Smoothly expand */
   8% {
-    height: 40%;
+    transform: scaleY(0.4);
   }
 
   20% {
-    height: 60%;
+    transform: scaleY(0.6);
   }
 
   /* Reach peak */
   40% {
-    height: 65%;
+    transform: scaleY(0.65);
   }
 
   50% {
-    height: 65%;
+    transform: scaleY(0.65);
   }
 
   /* Smoothly contract */
   60% {
-    height: 50%;
+    transform: scaleY(0.5);
   }
 
   75% {
-    height: 35%;
+    transform: scaleY(0.35);
   }
 
   92% {
-    height: 25%;
+    transform: scaleY(0.25);
   }
 
   /* At 100%: back to min */
   100% {
-    height: 25%;
+    transform: scaleY(0.25);
   }
 }
 
@@ -323,51 +323,51 @@ html {
 
   /* At 0%: short bars at min (25%), long bars start expanding */
   0% {
-    height: 25%;
+    transform: scaleY(0.25);
   }
 
   /* Expand when short bars are at min */
   8% {
-    height: 100%;
+    transform: scaleY(1);
   }
 
   /* Stay at max longer while short bars expand */
   25% {
-    height: 100%;
+    transform: scaleY(1);
   }
 
   /* Slowly start retracting as short bars continue expanding */
   35% {
-    height: 80%;
+    transform: scaleY(0.8);
   }
 
   45% {
-    height: 50%;
+    transform: scaleY(0.5);
   }
 
   /* Gradually retract to min */
   55% {
-    height: 30%;
+    transform: scaleY(0.3);
   }
 
   /* Reach min while short bars are at max */
   60% {
-    height: 25%;
+    transform: scaleY(0.25);
   }
 
   /* Stay at min while short bars contract */
   75% {
-    height: 25%;
+    transform: scaleY(0.25);
   }
 
   /* Stay at min until short bars reach min again */
   92% {
-    height: 25%;
+    transform: scaleY(0.25);
   }
 
   /* At 100%: short bars at min (25%), long bars ready to expand again */
   100% {
-    height: 25%;
+    transform: scaleY(0.25);
   }
 }
 
@@ -381,12 +381,82 @@ html {
 
 .animate-bar-short {
   animation: barAnimationShort 1.5s ease-in-out infinite;
-  transform-origin: center;
+  transform-origin: center bottom;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .animate-bar-long {
   animation: barAnimationLong 1.5s ease-in-out infinite;
-  transform-origin: center;
+  transform-origin: center bottom;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-bar-short,
+  .animate-bar-long {
+    animation: none;
+    transform: scaleY(0.5);
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  /* Reduce blur effects on mobile for better performance */
+  .blur-3xl {
+    filter: blur(40px);
+  }
+  
+  /* Optimize backdrop blur on mobile */
+  .backdrop-blur-xl {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  
+  /* Reduce animation complexity */
+  .animate-bar-short,
+  .animate-bar-long {
+    animation-duration: 2s;
+  }
+  
+  /* Reduce motion on mobile for better performance */
+  [data-framer-motion] {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+}
+
+/* Prevent layout shifts during animations */
+.animate-bar-short,
+.animate-bar-long {
+  contain: layout style paint;
+}
+
+/* Optimize image loading */
+img {
+  content-visibility: auto;
+}
+
+/* Force GPU acceleration for animated elements */
+[style*="will-change"] {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .animate-bar-delay-1 {
