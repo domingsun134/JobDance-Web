@@ -7,9 +7,14 @@ type LogoOrientation = "stacked" | "inline";
 type LogoProps = {
   className?: string;
   orientation?: LogoOrientation;
+  priority?: boolean;
 };
 
-export default function Logo({ className = "", orientation = "stacked" }: LogoProps) {
+export default function Logo({
+  className = "",
+  orientation = "stacked",
+  priority = false,
+}: LogoProps) {
   const isInline = orientation === "inline";
 
   const containerClasses = [
@@ -64,7 +69,7 @@ export default function Logo({ className = "", orientation = "stacked" }: LogoPr
         width={300}
         height={80}
         className={`h-auto w-auto ${imageWidthClass}`}
-        priority
+        priority={priority}
       />
     </div>
   );
