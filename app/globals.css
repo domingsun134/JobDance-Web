@@ -276,13 +276,12 @@ html {
 }
 
 @keyframes barAnimationShort {
-
   /* At 0%: start at min */
   0% {
     transform: scaleY(0.25);
   }
 
-  /* Smoothly expand */
+  /* Smoothly expand with cubic-bezier-like easing */
   8% {
     transform: scaleY(0.4);
   }
@@ -320,13 +319,12 @@ html {
 }
 
 @keyframes barAnimationLong {
-
   /* At 0%: short bars at min (25%), long bars start expanding */
   0% {
     transform: scaleY(0.25);
   }
 
-  /* Expand when short bars are at min */
+  /* Expand when short bars are at min - smoother transition */
   8% {
     transform: scaleY(1);
   }
@@ -380,7 +378,7 @@ html {
 }
 
 .animate-bar-short {
-  animation: barAnimationShort 1.5s ease-in-out infinite;
+  animation: barAnimationShort 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
   transform-origin: center bottom;
   will-change: transform;
   backface-visibility: hidden;
@@ -390,7 +388,7 @@ html {
 }
 
 .animate-bar-long {
-  animation: barAnimationLong 1.5s ease-in-out infinite;
+  animation: barAnimationLong 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
   transform-origin: center bottom;
   will-change: transform;
   backface-visibility: hidden;
