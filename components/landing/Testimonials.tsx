@@ -39,16 +39,22 @@ export function Testimonials() {
             <div className="relative container mx-auto px-4">
                 <motion.div
                     ref={ref}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-                    transition={{ duration: 0.8 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                    transition={{ duration: 0.5 }}
                     className="text-center max-w-3xl mx-auto mb-20"
+                    style={{
+                        willChange: 'opacity, transform',
+                    }}
                 >
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.6 }}
+                        transition={{ duration: 0.4 }}
                         className="inline-block px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full mb-6"
+                        style={{
+                            willChange: 'opacity, transform',
+                        }}
                     >
                         <span className="text-green-400 text-sm">SUCCESS STORIES</span>
                     </motion.div>
@@ -64,11 +70,14 @@ export function Testimonials() {
                     {testimonials.map((testimonial, index) => (
                         <motion.div
                             key={index}
-                            initial={{ opacity: 0, y: 50 }}
-                            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-                            transition={{ duration: 0.6, delay: index * 0.2 }}
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+                            transition={{ duration: 0.4, delay: index * 0.1 }}
                             whileHover={{ y: -10, scale: 1.02 }}
                             className="relative group"
+                            style={{
+                                willChange: 'opacity, transform',
+                            }}
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 -z-10" />
 
