@@ -2,16 +2,10 @@
 
 import Logo from '@/components/Logo';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { Github, Twitter, Linkedin, Mail } from 'lucide-react';
 
 export function Footer() {
-    const links = {
-        product: ['Features', 'Pricing', 'Templates', 'Integrations'],
-        company: ['About', 'Blog', 'Careers', 'Press'],
-        resources: ['Documentation', 'Help Center', 'Community', 'Contact'],
-        legal: ['Privacy', 'Terms', 'Security', 'Cookies']
-    };
-
     const socials = [
         { icon: Twitter, href: '#' },
         { icon: Linkedin, href: '#' },
@@ -22,9 +16,9 @@ export function Footer() {
     return (
         <footer className="relative bg-black border-t border-white/10">
             <div className="container mx-auto px-4 py-16">
-                <div className="grid md:grid-cols-2 lg:grid-cols-6 gap-12 mb-12">
+                <div className="grid md:grid-cols-2 gap-12 mb-12">
                     {/* Brand */}
-                    <div className="lg:col-span-2">
+                    <div>
                         <motion.div whileHover={{ scale: 1.02 }} className="mb-6">
                             <Logo orientation="inline" className="gap-2" />
                         </motion.div>
@@ -45,75 +39,6 @@ export function Footer() {
                             ))}
                         </div>
                     </div>
-
-                    {/* Links */}
-                    <div>
-                        <h3 className="text-white mb-4">Product</h3>
-                        <ul className="space-y-3">
-                            {links.product.map((link, index) => (
-                                <li key={index}>
-                                    <motion.a
-                                        href="#"
-                                        whileHover={{ x: 5 }}
-                                        className="text-gray-400 hover:text-white transition-colors inline-block"
-                                    >
-                                        {link}
-                                    </motion.a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h3 className="text-white mb-4">Company</h3>
-                        <ul className="space-y-3">
-                            {links.company.map((link, index) => (
-                                <li key={index}>
-                                    <motion.a
-                                        href="#"
-                                        whileHover={{ x: 5 }}
-                                        className="text-gray-400 hover:text-white transition-colors inline-block"
-                                    >
-                                        {link}
-                                    </motion.a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h3 className="text-white mb-4">Resources</h3>
-                        <ul className="space-y-3">
-                            {links.resources.map((link, index) => (
-                                <li key={index}>
-                                    <motion.a
-                                        href="#"
-                                        whileHover={{ x: 5 }}
-                                        className="text-gray-400 hover:text-white transition-colors inline-block"
-                                    >
-                                        {link}
-                                    </motion.a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h3 className="text-white mb-4">Legal</h3>
-                        <ul className="space-y-3">
-                            {links.legal.map((link, index) => (
-                                <li key={index}>
-                                    <motion.a
-                                        href="#"
-                                        whileHover={{ x: 5 }}
-                                        className="text-gray-400 hover:text-white transition-colors inline-block"
-                                    >
-                                        {link}
-                                    </motion.a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
                 </div>
 
                 {/* Bottom */}
@@ -123,6 +48,20 @@ export function Footer() {
                     </p>
                     <p className="text-gray-500 text-sm">
                         Built with ❤️ for job seekers worldwide
+                    </p>
+                </div>
+
+                {/* Terms and Privacy Links */}
+                <div className="pt-4 text-center">
+                    <p className="text-xs text-gray-500">
+                        By continuing, you agree to our{' '}
+                        <Link href="/terms" className="text-purple-400 hover:text-purple-300 underline">
+                            Terms of Service
+                        </Link>{' '}
+                        and{' '}
+                        <Link href="/privacy" className="text-purple-400 hover:text-purple-300 underline">
+                            Privacy Policy
+                        </Link>
                     </p>
                 </div>
             </div>
