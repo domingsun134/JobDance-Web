@@ -379,7 +379,7 @@ html {
 
 .animate-bar-short {
   animation: barAnimationShort 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
-  transform-origin: center bottom;
+  transform-origin: center center;
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -389,7 +389,7 @@ html {
 
 .animate-bar-long {
   animation: barAnimationLong 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
-  transform-origin: center bottom;
+  transform-origin: center center;
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
