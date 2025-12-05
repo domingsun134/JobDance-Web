@@ -86,9 +86,6 @@ export function HowItWorks() {
                 </motion.div>
 
                 <div className="relative">
-                    {/* Connection line */}
-                    <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500/0 via-purple-500/50 to-purple-500/0 transform -translate-y-1/2" />
-
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                         {steps.map((step, index) => (
                             <motion.div
@@ -127,25 +124,6 @@ export function HowItWorks() {
                                     <h3 className="text-2xl text-white mb-3">{step.title}</h3>
                                     <p className="text-gray-400 leading-relaxed">{step.description}</p>
                                 </motion.div>
-
-                                {/* Arrow connector */}
-                                {index < steps.length - 1 && (
-                                    <motion.div
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
-                                        transition={{ duration: 0.4, delay: index * 0.1 + 0.2 }}
-                                        className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10"
-                                        style={{
-                                            willChange: 'opacity, transform',
-                                        }}
-                                    >
-                                        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full flex items-center justify-center">
-                                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                            </svg>
-                                        </div>
-                                    </motion.div>
-                                )}
                             </motion.div>
                         ))}
                     </div>
