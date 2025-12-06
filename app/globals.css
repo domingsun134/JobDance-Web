@@ -86,7 +86,8 @@
   }
 
   .onboarding-card {
-    @apply rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(15,23,42,0.45)];
+    @apply rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.45);
   }
 
   .onboarding-card h1,
@@ -276,6 +277,7 @@ html {
 }
 
 @keyframes barAnimationShort {
+
   /* At 0%: start at min */
   0% {
     transform: scaleY(0.25);
@@ -319,6 +321,7 @@ html {
 }
 
 @keyframes barAnimationLong {
+
   /* At 0%: short bars at min (25%), long bars start expanding */
   0% {
     transform: scaleY(0.25);
@@ -399,12 +402,13 @@ html {
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
+
   .animate-bar-short,
   .animate-bar-long {
     animation: none;
     transform: scaleY(0.5);
   }
-  
+
   *,
   *::before,
   *::after {
@@ -416,23 +420,24 @@ html {
 
 /* Mobile-specific optimizations */
 @media (max-width: 768px) {
+
   /* Reduce blur effects on mobile for better performance */
   .blur-3xl {
     filter: blur(40px);
   }
-  
+
   /* Optimize backdrop blur on mobile */
   .backdrop-blur-xl {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
-  
+
   /* Reduce animation complexity */
   .animate-bar-short,
   .animate-bar-long {
     animation-duration: 2s;
   }
-  
+
   /* Reduce motion on mobile for better performance */
   [data-framer-motion] {
     transform: translateZ(0);
@@ -535,5 +540,87 @@ input[type="checkbox"]:focus {
 @supports (padding: max(0px)) {
   .safe-area-inset-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Print Styles for ATS Friendly PDF - Selectable Text */
+/* Print Styles for ATS Friendly PDF - Selectable Text */
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* CRITICAL: Explicitly hide all scripts/styles/portals to prevent raw code dump */
+  script,
+  style,
+  noscript,
+  iframe,
+  [data-next-hide-fouc],
+  [data-nextjs-scroll-focus-boundary] {
+    display: none !important;
+  }
+
+  /* Hide UI elements specifically */
+  nav,
+  aside,
+  header,
+  footer,
+  button,
+  .fixed,
+  .sticky,
+  div[class*="sidebar"],
+  div[class*="overlay"],
+  .no-print,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* "Print just one element" Technique:
+     1. Hide everything using visibility (preserves layout calculation but hides pixels).
+     2. Show the target element.
+     3. Position target element absolute top-left to takeover the page.
+  */
+  body:not(.print-preview) * {
+    visibility: hidden;
+  }
+
+  /* FOR REACT-TO-PRINT (IFRAME) */
+  /* The iframe body will have class .print-preview used in useReactToPrint */
+  body.print-preview * {
+    visibility: visible !important;
+  }
+
+  #resume-preview,
+  #resume-preview * {
+    visibility: visible;
+  }
+
+  /* Resume Helper for Native Print (fallback) */
+  body:not(.print-preview) #resume-preview {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    /* A4 Width */
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    z-index: 9999 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Reset any dark mode or text colors for print */
+  #resume-preview {
+    color: black !important;
   }
 }

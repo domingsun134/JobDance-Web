@@ -36,9 +36,9 @@ const renderDescription = (description: string) => {
 };
 
 const ModernTemplate = ({ profile }: { profile: UserProfile }) => (
-    <div className="p-8 md:p-12 font-sans text-gray-800">
+    <div className="p-8 md:p-12 print:pt-8 print:pb-0 font-sans text-gray-800">
         {/* Header */}
-        <div className="border-b-2 border-gray-900 pb-6 mb-8">
+        <div className="pb-6 mb-8 break-inside-avoid">
             <h1 className="text-4xl font-bold uppercase tracking-tight mb-3 text-gray-900 resume-block">
                 {profile.personalInfo?.fullName || 'Your Name'}
             </h1>
@@ -74,12 +74,12 @@ const ModernTemplate = ({ profile }: { profile: UserProfile }) => (
         {/* Experience */}
         {profile.workExperience && profile.workExperience.length > 0 && (
             <div className="mb-8 resume-block">
-                <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 border-b border-gray-200 mb-4 pb-2">Experience</h2>
+                <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 mb-4">Experience</h2>
                 <div className="space-y-6">
                     {[...profile.workExperience]
                         .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
                         .map((exp, index) => (
-                            <div key={index}>
+                            <div key={index} className="break-inside-avoid">
                                 <div className="flex justify-between items-baseline mb-1">
                                     <h3 className="font-bold text-lg text-gray-900">{exp.position}</h3>
                                     <span className="text-sm font-medium text-gray-500 whitespace-nowrap ml-4">
@@ -98,13 +98,13 @@ const ModernTemplate = ({ profile }: { profile: UserProfile }) => (
 
         {/* Education */}
         {profile.education && profile.education.length > 0 && (
-            <div className="mb-8 resume-block">
-                <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 border-b border-gray-200 mb-4 pb-2">Education</h2>
+            <div className="mb-8 resume-block break-inside-avoid">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 mb-4">Education</h2>
                 <div className="space-y-4">
                     {[...profile.education]
                         .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
                         .map((edu, index) => (
-                            <div key={index}>
+                            <div key={index} className="break-inside-avoid">
                                 <div className="flex justify-between items-baseline mb-1">
                                     <h3 className="font-bold text-lg text-gray-900">{edu.institution}</h3>
                                     <span className="text-sm font-medium text-gray-500 whitespace-nowrap ml-4">
@@ -121,10 +121,10 @@ const ModernTemplate = ({ profile }: { profile: UserProfile }) => (
         )}
 
         {/* Skills & Languages Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 break-inside-avoid">
             {profile.skills && profile.skills.length > 0 && (
-                <div className="resume-block">
-                    <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 border-b border-gray-200 mb-4 pb-2">Skills</h2>
+                <div className="resume-block break-inside-avoid">
+                    <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 mb-4">Skills</h2>
                     <div className="flex flex-wrap gap-2">
                         {profile.skills.map((skill, index) => (
                             <span key={index} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-md text-sm font-medium">
@@ -136,8 +136,8 @@ const ModernTemplate = ({ profile }: { profile: UserProfile }) => (
             )}
 
             {profile.languages && profile.languages.length > 0 && (
-                <div className="resume-block">
-                    <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 border-b border-gray-200 mb-4 pb-2">Languages</h2>
+                <div className="resume-block break-inside-avoid">
+                    <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 mb-4">Languages</h2>
                     <div className="space-y-2">
                         {profile.languages.map((lang, index) => (
                             <div key={index} className="flex justify-between text-sm">
@@ -153,9 +153,9 @@ const ModernTemplate = ({ profile }: { profile: UserProfile }) => (
 );
 
 const ProfessionalTemplate = ({ profile }: { profile: UserProfile }) => (
-    <div className="p-8 md:p-12 font-serif text-gray-900">
+    <div className="p-8 md:p-12 print:pt-8 print:pb-0 font-serif text-gray-900">
         {/* Header */}
-        <div className="text-center border-b-2 border-gray-300 pb-6 mb-8">
+        <div className="text-center pb-6 mb-8 break-inside-avoid">
             <h1 className="text-3xl font-bold uppercase tracking-widest mb-4 text-gray-900 resume-block">
                 {profile.personalInfo?.fullName || 'Your Name'}
             </h1>
@@ -175,12 +175,12 @@ const ProfessionalTemplate = ({ profile }: { profile: UserProfile }) => (
         {/* Experience */}
         {profile.workExperience && profile.workExperience.length > 0 && (
             <div className="mb-8 resume-block">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4 border-b border-gray-200 pb-1">Professional Experience</h2>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4 pb-1">Professional Experience</h2>
                 <div className="space-y-6">
                     {[...profile.workExperience]
                         .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
                         .map((exp, index) => (
-                            <div key={index}>
+                            <div key={index} className="break-inside-avoid">
                                 <div className="flex justify-between items-baseline mb-1">
                                     <h3 className="font-bold text-lg">{exp.company}</h3>
                                     <span className="text-sm italic text-gray-600">
@@ -199,13 +199,13 @@ const ProfessionalTemplate = ({ profile }: { profile: UserProfile }) => (
 
         {/* Education */}
         {profile.education && profile.education.length > 0 && (
-            <div className="mb-8 resume-block">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4 border-b border-gray-200 pb-1">Education</h2>
+            <div className="mb-8 resume-block break-inside-avoid">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4 pb-1">Education</h2>
                 <div className="space-y-4">
                     {[...profile.education]
                         .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
                         .map((edu, index) => (
-                            <div key={index}>
+                            <div key={index} className="break-inside-avoid">
                                 <div className="flex justify-between items-baseline mb-1">
                                     <h3 className="font-bold text-lg">{edu.institution}</h3>
                                     <span className="text-sm italic text-gray-600">
@@ -222,10 +222,10 @@ const ProfessionalTemplate = ({ profile }: { profile: UserProfile }) => (
         )}
 
         {/* Skills & Languages */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 break-inside-avoid">
             {profile.skills && profile.skills.length > 0 && (
-                <div className="resume-block">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4 border-b border-gray-200 pb-1">Core Competencies</h2>
+                <div className="resume-block break-inside-avoid">
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4 pb-1">Core Competencies</h2>
                     <div className="flex flex-wrap gap-x-4 gap-y-2">
                         {profile.skills.map((skill, index) => (
                             <span key={index} className="text-sm text-gray-800">
@@ -237,8 +237,8 @@ const ProfessionalTemplate = ({ profile }: { profile: UserProfile }) => (
             )}
 
             {profile.languages && profile.languages.length > 0 && (
-                <div className="resume-block">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4 border-b border-gray-200 pb-1">Languages</h2>
+                <div className="resume-block break-inside-avoid">
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4 pb-1">Languages</h2>
                     <div className="space-y-1">
                         {profile.languages.map((lang, index) => (
                             <div key={index} className="text-sm text-gray-800">
@@ -253,10 +253,10 @@ const ProfessionalTemplate = ({ profile }: { profile: UserProfile }) => (
 );
 
 const CreativeTemplate = ({ profile }: { profile: UserProfile }) => (
-    <div className="flex min-h-full font-sans">
+    <div className="flex min-h-full font-sans print:pt-0 print:pb-4">
         {/* Sidebar */}
-        <div className="w-1/3 bg-gray-900 text-white p-8 pt-12">
-            <div className="mb-10">
+        <div className="w-1/3 bg-gray-900 text-white p-8 pt-12 print:pt-8 print:pb-4">
+            <div className="mb-10 break-inside-avoid">
                 <h1 className="text-3xl font-bold leading-tight mb-4 text-cyan-400 resume-block">
                     {profile.personalInfo?.fullName?.split(' ')[0]}<br />
                     <span className="text-white">{profile.personalInfo?.fullName?.split(' ').slice(1).join(' ')}</span>
@@ -285,7 +285,7 @@ const CreativeTemplate = ({ profile }: { profile: UserProfile }) => (
             </div>
 
             {profile.skills && profile.skills.length > 0 && (
-                <div className="mb-10 resume-block">
+                <div className="mb-10 resume-block break-inside-avoid">
                     <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Skills</h2>
                     <div className="flex flex-wrap gap-2">
                         {profile.skills.map((skill, index) => (
@@ -298,7 +298,7 @@ const CreativeTemplate = ({ profile }: { profile: UserProfile }) => (
             )}
 
             {profile.languages && profile.languages.length > 0 && (
-                <div className="resume-block">
+                <div className="resume-block break-inside-avoid">
                     <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Languages</h2>
                     <div className="space-y-2">
                         {profile.languages.map((lang, index) => (
@@ -313,7 +313,7 @@ const CreativeTemplate = ({ profile }: { profile: UserProfile }) => (
         </div>
 
         {/* Main Content */}
-        <div className="w-2/3 p-8 pt-12 bg-white text-gray-800">
+        <div className="w-2/3 p-8 pt-12 bg-white text-gray-800 print:pt-8 print:pb-4">
             {profile.workExperience && profile.workExperience.length > 0 && (
                 <div className="mb-10 resume-block">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
@@ -324,7 +324,7 @@ const CreativeTemplate = ({ profile }: { profile: UserProfile }) => (
                         {[...profile.workExperience]
                             .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
                             .map((exp, index) => (
-                                <div key={index} className="relative pl-4 border-l-2 border-gray-100 resume-block">
+                                <div key={index} className="relative pl-4 border-l-2 border-gray-100 resume-block break-inside-avoid">
                                     <div className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-cyan-500"></div>
                                     <h3 className="font-bold text-lg text-gray-900">{exp.position}</h3>
                                     <div className="text-sm font-semibold text-cyan-600 mb-1">{exp.company}</div>
@@ -350,7 +350,7 @@ const CreativeTemplate = ({ profile }: { profile: UserProfile }) => (
                         {[...profile.education]
                             .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
                             .map((edu, index) => (
-                                <div key={index} className="resume-block">
+                                <div key={index} className="resume-block break-inside-avoid">
                                     <h3 className="font-bold text-lg text-gray-900">{edu.institution}</h3>
                                     <div className="text-sm text-gray-600 mb-1">
                                         {edu.degree} in {edu.field}
@@ -377,7 +377,7 @@ export default function ResumePreview({ profile, template = 'modern' }: ResumePr
     }
 
     return (
-        <div className="bg-white shadow-lg min-h-full w-full max-w-[210mm] mx-auto overflow-hidden" id="resume-preview">
+        <div className="bg-white shadow-lg print:shadow-none min-h-full w-full max-w-[210mm] mx-auto overflow-hidden" id="resume-preview">
             {template === 'modern' && <ModernTemplate profile={profile} />}
             {template === 'professional' && <ProfessionalTemplate profile={profile} />}
             {template === 'creative' && <CreativeTemplate profile={profile} />}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>JobDance Tracker</title>
+  <style>
+    :root {
+      --primary: #06b6d4;
+      --bg: #0f172a;
+      --text: #f8fafc;
+      --input-bg: #1e293b;
+      --border: #334155;
+    }
+    body {
+      width: 320px;
+      padding: 16px;
+      margin: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 18px;
+      color: var(--primary);
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+      color: #94a3b8;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background-color: var(--input-bg);
+      color: white;
+      font-size: 14px;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .status-msg {
+      margin-top: 10px;
+      font-size: 13px;
+      text-align: center;
+      min-height: 20px;
+    }
+    .success { color: #4ade80; }
+    .error { color: #f87171; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h2>JobDance Tracker</h2>
+  
+  <div id="auth-section" class="hidden">
+    <p>Please log in to JobDance to save jobs.</p>
+    <button id="login-btn">Go to Login</button>
+  </div>
+
+  <div id="main-section">
+    <form id="job-form">
+      <div class="form-group">
+        <label for="company">Company Name</label>
+        <input type="text" id="company" required placeholder="e.g. Google">
+      </div>
+      
+      <div class="form-group">
+        <label for="position">Position Title</label>
+        <input type="text" id="position" required placeholder="e.g. Software Engineer">
+      </div>
+      
+      <div class="form-group">
+        <label for="url">Job URL</label>
+        <input type="url" id="url" required readonly>
+      </div>
+
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status">
+          <option value="applied">Applied</option>
+          <option value="interviewing">Interviewing</option>
+          <option value="offer">Offer</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea id="notes" rows="2" placeholder="Salary, deadline, etc."></textarea>
+      </div>
+
+      <button type="submit" id="save-btn">Save Job Application</button>
+    </form>
+  </div>
+
+  <div id="message" class="status-msg"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

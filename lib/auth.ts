@@ -26,196 +26,10 @@ export interface UserProfile {
   languages: Language[];
   availability: Availability;
   expectedSalary: Salary;
+  coverLetter?: string;
 }
 
-export interface WorkExperience {
-  id: string;
-  company: string;
-  position: string;
-  startDate: string;
-  endDate: string;
-  current: boolean;
-  description: string;
-}
-
-export interface Education {
-  id: string;
-  institution: string;
-  degree: string;
-  field: string;
-  startDate: string;
-  endDate: string;
-  current: boolean;
-}
-
-export interface Language {
-  name: string;
-  proficiency: "basic" | "intermediate" | "advanced" | "native";
-}
-
-export interface Availability {
-  startDate: string;
-  duration: string;
-}
-
-export interface Salary {
-  amount: number;
-  currency: string;
-  period: "hourly" | "daily" | "weekly" | "monthly" | "yearly";
-}
-
-// Register a new user
-export async function registerUser(email: string, password: string, captchaToken?: string): Promise<User> {
-  // Sign up with Supabase Auth
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      captchaToken,
-    },
-  });
-
-  if (authError) {
-    throw new Error(authError.message || "Registration failed");
-  }
-
-  if (!authData.user) {
-    throw new Error("Failed to create user");
-  }
-
-  // User profile is automatically created by database trigger
-  // Wait a moment for the trigger to execute, then verify profile exists
-  // Retry a few times in case the trigger takes longer
-  let profile = null;
-  let profileError = null;
-  const maxRetries = 3;
-
-  for (let i = 0; i < maxRetries; i++) {
-    await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
-
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('onboarding_completed')
-      .eq('id', authData.user.id)
-      .single();
-
-    if (data && !error) {
-      profile = data;
-      break;
-    }
-
-    profileError = error;
-
-    // If it's not a "not found" error, break early
-    if (error && error.code !== 'PGRST116') {
-      break;
-    }
-  }
-
-  // If profile doesn't exist after retries, try to create it manually (fallback)
-  if (!profile && profileError) {
-    if (profileError.code === 'PGRST116') {
-      // Profile doesn't exist, try to create it
-      const { error: insertError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: authData.user.id,
-          email: email,
-          onboarding_completed: false,
-        });
-
-      if (insertError) {
-        // If insert fails due to RLS, the trigger will create it eventually
-        // Log the error but don't block registration - user can proceed
-        console.warn('Profile creation failed, but user account is created:', insertError.message);
-        // Don't throw - allow user to proceed, profile will be created by trigger or on next login
-      }
-    } else {
-      // Other error - log but don't block
-      console.warn('Profile verification error:', profileError.message);
-    }
-  }
-
-  // Send welcome email (fire and forget)
-  fetch('/api/send-welcome', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      email: email,
-      name: email.split('@')[0], // Fallback name
-    }),
-  }).catch(err => console.error('Failed to send welcome email:', err));
-
-  return {
-    id: authData.user.id,
-    email: email,
-    onboardingCompleted: false,
-  };
-}
-
-// Login user
-export async function loginUser(email: string, password: string, captchaToken?: string): Promise<User> {
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-    options: {
-      captchaToken,
-    },
-  });
-
-  if (authError) {
-    throw new Error(authError.message || "Invalid email or password");
-  }
-
-  if (!authData.user) {
-    throw new Error("Login failed");
-  }
-
-  // Get user profile
-  const { data: profile, error: profileError } = await supabase
-    .from('user_profiles')
-    .select('onboarding_completed')
-    .eq('id', authData.user.id)
-    .single();
-
-  if (profileError && profileError.code !== 'PGRST116') {
-    throw new Error(profileError.message || "Failed to fetch user profile");
-  }
-
-  return {
-    id: authData.user.id,
-    email: authData.user.email || email,
-    onboardingCompleted: profile?.onboarding_completed || false,
-  };
-}
-
-// Get current user
-export async function getCurrentUser(): Promise<User | null> {
-  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !authUser) {
-    return null;
-  }
-
-  // Get user profile
-  const { data: profile, error: profileError } = await supabase
-    .from('user_profiles')
-    .select('onboarding_completed')
-    .eq('id', authUser.id)
-    .single();
-
-  if (profileError && profileError.code !== 'PGRST116') {
-    return null;
-  }
-
-  return {
-    id: authUser.id,
-    email: authUser.email || '',
-    onboardingCompleted: profile?.onboarding_completed || false,
-  };
-}
+// ... (existing code)
 
 // Update user profile
 export async function updateUserProfile(profile: UserProfile): Promise<void> {
@@ -259,25 +73,41 @@ export async function updateUserProfile(profile: UserProfile): Promise<void> {
     }
   }
 
-  // Update user metadata (Personal Info) - NOW SAVING TO user_profiles TABLE
+  // Update user metadata (Personal Info) AND Cover Letter - NOW SAVING TO user_profiles TABLE
   if (profile.personalInfo) {
     console.log("Updating user_profiles with:", profile.personalInfo);
 
+    const updateData: any = {
+      full_name: profile.personalInfo.fullName,
+      phone: profile.personalInfo.phone,
+      location: profile.personalInfo.location,
+      linkedin: profile.personalInfo.linkedin,
+      portfolio: profile.personalInfo.portfolio,
+    };
+
+    if (profile.coverLetter !== undefined) {
+      updateData.cover_letter = profile.coverLetter;
+    }
+
     const { error: updateError } = await supabase
       .from('user_profiles')
-      .update({
-        full_name: profile.personalInfo.fullName,
-        phone: profile.personalInfo.phone,
-        location: profile.personalInfo.location,
-        linkedin: profile.personalInfo.linkedin,
-        portfolio: profile.personalInfo.portfolio,
-      })
+      .update(updateData)
       .eq('id', user.id);
 
     if (updateError) {
       console.error("Failed to update user_profiles:", updateError);
     } else {
       console.log("user_profiles updated successfully");
+    }
+  } else if (profile.coverLetter !== undefined) {
+    // If only updating cover letter
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({ cover_letter: profile.coverLetter })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error("Failed to update cover_letter:", updateError);
     }
   } else {
     console.warn("No personal info to update in profile");
@@ -464,17 +294,21 @@ export async function getUserProfile(): Promise<UserProfile | null> {
   let salaryData = null;
 
   try {
-    const { data } = await supabase.from('availability').select('*').eq('user_id', user.id).single();
-    availabilityData = data;
+    const { data, error } = await supabase.from('availability').select('*').eq('user_id', user.id).single();
+    if (!error && data) {
+      availabilityData = data;
+    }
   } catch (e) {
-    // Ignore error if table doesn't exist
+    console.warn("Failed to fetch availability:", e);
   }
 
   try {
-    const { data } = await supabase.from('expected_salary').select('*').eq('user_id', user.id).single();
-    salaryData = data;
+    const { data, error } = await supabase.from('expected_salary').select('*').eq('user_id', user.id).single();
+    if (!error && data) {
+      salaryData = data;
+    }
   } catch (e) {
-    // Ignore error if table doesn't exist
+    console.warn("Failed to fetch expected_salary:", e);
   }
 
   return {
@@ -487,6 +321,7 @@ export async function getUserProfile(): Promise<UserProfile | null> {
       linkedin: userProfileData?.linkedin || user.user_metadata?.linkedin || '',
       portfolio: userProfileData?.portfolio || user.user_metadata?.portfolio || '',
     },
+    coverLetter: userProfileData?.cover_letter || undefined,
     workExperience: (workExpResult.data || []).map(exp => ({
       id: exp.id,
       company: exp.company,
@@ -523,6 +358,159 @@ export async function getUserProfile(): Promise<UserProfile | null> {
       currency: 'USD',
       period: 'monthly',
     },
+  };
+}
+
+// Register a new user
+export async function registerUser(email: string, password: string, captchaToken?: string): Promise<User> {
+  // Sign up with Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      captchaToken,
+    },
+  });
+
+  if (authError) {
+    throw new Error(authError.message || "Registration failed");
+  }
+
+  if (!authData.user) {
+    throw new Error("Failed to create user");
+  }
+
+  // User profile is automatically created by database trigger
+  // Wait a moment for the trigger to execute, then verify profile exists
+  // Retry a few times in case the trigger takes longer
+  let profile = null;
+  let profileError = null;
+  const maxRetries = 3;
+
+  for (let i = 0; i < maxRetries; i++) {
+    await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
+
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('onboarding_completed')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (data && !error) {
+      profile = data;
+      break;
+    }
+
+    profileError = error;
+
+    // If it's not a "not found" error, break early
+    if (error && error.code !== 'PGRST116') {
+      break;
+    }
+  }
+
+  // If profile doesn't exist after retries, try to create it manually (fallback)
+  if (!profile && profileError) {
+    if (profileError.code === 'PGRST116') {
+      // Profile doesn't exist, try to create it
+      const { error: insertError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: authData.user.id,
+          email: email,
+          onboarding_completed: false,
+        });
+
+      if (insertError) {
+        // If insert fails due to RLS, the trigger will create it eventually
+        // Log the error but don't block registration - user can proceed
+        console.warn('Profile creation failed, but user account is created:', insertError.message);
+        // Don't throw - allow user to proceed, profile will be created by trigger or on next login
+      }
+    } else {
+      // Other error - log but don't block
+      console.warn('Profile verification error:', profileError.message);
+    }
+  }
+
+  // Send welcome email (fire and forget)
+  fetch('/api/send-welcome', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: email,
+      name: email.split('@')[0], // Fallback name
+    }),
+  }).catch(err => console.error('Failed to send welcome email:', err));
+
+  return {
+    id: authData.user.id,
+    email: email,
+    onboardingCompleted: false,
+  };
+}
+
+// Login user
+export async function loginUser(email: string, password: string, captchaToken?: string): Promise<User> {
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+    options: {
+      captchaToken,
+    },
+  });
+
+  if (authError) {
+    throw new Error(authError.message || "Invalid email or password");
+  }
+
+  if (!authData.user) {
+    throw new Error("Login failed");
+  }
+
+  // Get user profile
+  const { data: profile, error: profileError } = await supabase
+    .from('user_profiles')
+    .select('onboarding_completed')
+    .eq('id', authData.user.id)
+    .single();
+
+  if (profileError && profileError.code !== 'PGRST116') {
+    throw new Error(profileError.message || "Failed to fetch user profile");
+  }
+
+  return {
+    id: authData.user.id,
+    email: authData.user.email || email,
+    onboardingCompleted: profile?.onboarding_completed || false,
+  };
+}
+
+// Get current user
+export async function getCurrentUser(): Promise<User | null> {
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !authUser) {
+    return null;
+  }
+
+  // Get user profile
+  const { data: profile, error: profileError } = await supabase
+    .from('user_profiles')
+    .select('onboarding_completed')
+    .eq('id', authUser.id)
+    .single();
+
+  if (profileError && profileError.code !== 'PGRST116') {
+    return null;
+  }
+
+  return {
+    id: authUser.id,
+    email: authUser.email || '',
+    onboardingCompleted: profile?.onboarding_completed || false,
   };
 }
 
@@ -592,4 +580,60 @@ export async function signInWithLinkedIn(): Promise<void> {
     console.error('LinkedIn sign-in error:', err);
     throw err;
   }
+}
+// Resume Optimization
+export interface ResumeOptimization {
+  id: string;
+  job_title: string;
+  job_description: string;
+  optimized_profile_data: UserProfile;
+  optimized_cover_letter?: string;
+  optimization_summary?: string;
+  created_at: string;
+}
+
+export async function getOptimizedResumes(userId: string): Promise<ResumeOptimization[]> {
+  const { data, error } = await supabase
+    .from('resume_optimizations')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('Error fetching optimized resumes:', JSON.stringify(error, null, 2));
+    // Graceful fallback for missing table
+    return [];
+  }
+  return data || [];
+}
+
+export async function saveOptimizedResume(userId: string, data: Partial<ResumeOptimization>): Promise<ResumeOptimization | null> {
+  const { data: result, error } = await supabase
+    .from('resume_optimizations')
+    .insert({
+      user_id: userId,
+      ...data
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error saving optimized resume:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
+    throw error;
+  }
+  return result;
+}
+
+export async function deleteOptimizedResume(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('resume_optimizations')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
 }

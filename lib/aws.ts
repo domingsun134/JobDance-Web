@@ -798,37 +798,20 @@ Generate a comprehensive, FAIR report that evaluates answers in the context of t
       return JSON.parse(jsonMatch[0]);
     }
 
-    // If no JSON found, return a structured default
+    // Fallback if structured parsing fails but we have text
+    console.warn('Failed to parse interview report JSON, returning structured fallback');
     return {
       overallPerformance: {
-        score: 70,
-        summary: "Interview completed. Review the detailed analysis below.",
-        strengths: [],
-        weaknesses: []
+        score: 75,
+        summary: reportText.slice(0, 200) + "...",
+        strengths: ["Communication checks out", "Completed the interview"],
+        weaknesses: ["Could not detail specific strengths from raw text"]
       },
-      technicalKnowledge: {
-        score: 70,
-        assessment: reportText.substring(0, 200),
-        areasOfExpertise: [],
-        gaps: []
-      },
-      confidenceLevel: {
-        score: 70,
-        assessment: "Confidence level assessed based on communication style.",
-        indicators: []
-      },
-      jobSuitability: {
-        score: 70,
-        assessment: "Suitability assessed based on responses.",
-        alignment: [],
-        concerns: []
-      },
-      hiringLikelihood: {
-        score: 70,
-        assessment: "Based on overall performance.",
-        factors: [],
-        recommendation: "Continue practicing and improving."
-      },
+      technicalKnowledge: { score: 0, assessment: "Not parsed", areasOfExpertise: [], gaps: [] },
+      confidenceLevel: { score: 0, assessment: "Not parsed", indicators: [] },
+      jobSuitability: { score: 0, assessment: "Not parsed", alignment: [], concerns: [] },
+      hiringLikelihood: { score: 0, assessment: "Not parsed", factors: [], recommendation: "Review raw text" },
+      conversationAnalysis: { coherence: "Unknown", consistency: "Unknown", depth: "Unknown", narrative: "Unknown" },
       improvements: [],
       considerations: []
     };
@@ -928,6 +911,81 @@ export async function uploadVideoToS3(
   return url;
 }
 
+// Generate Cover Letter using AWS Bedrock
+export async function generateCoverLetter(
+  userProfile: any,
+  jobDescription?: string
+): Promise<string> {
+  const client = getBedrockClient();
+
+  const systemPrompt = `You are an expert career coach and professional writer. Your task is to write a compelling, professional cover letter for a candidate.
+
+CRITICAL INSTRUCTIONS:
+1. Use the candidate's provided background (Experience, Skills, Education).
+2. If a Job Description is provided, TAILOR the letter specifically to that role, explaining why the candidate's specific past experiences make them a perfect fit.
+3. If NO Job Description is provided, write a strong "General Application" cover letter highlighting their strongest skills and achievements.
+4. Tone: Professional, confident, enthusiastic, but not arrogant.
+5. Format: Standard business letter format.
+6. Length: Concise (3-4 paragraphs max).
+
+Structure:
+- Header (Candidate Info) - You can omit this as the UI handles it, just start with "Dear [Hiring Manager or Company Name],"
+- Opening: Strong hook about why they are applying.
+- Body Paragraph 1: Key experience and achievements that align with the role. Use quantification (numbers) if available in the profile.
+- Body Paragraph 2: Skills and "Soft Skills" (Teamwork, leadership) and cultural fit.
+- Closing: Professional sign-off requesting an interview.
+
+Candidate Data:
+User Profile: ${JSON.stringify({
+    name: userProfile.personalInfo.fullName,
+    email: userProfile.personalInfo.email,
+    skills: userProfile.skills,
+    experience: userProfile.workExperience.map((exp: any) => `${exp.position} at ${exp.company} (${exp.startDate} - ${exp.current ? 'Present' : exp.endDate}). Highlights: ${exp.description || 'N/A'}`),
+    education: userProfile.education.map((edu: any) => `${edu.degree} in ${edu.field} from ${edu.institution}`)
+  })}
+
+Target Job Description:
+${jobDescription || "No specific job described. Write a general inquiry letter for a role matching the candidate's top skills."}
+
+Output:
+Return ONLY the body of the letter. Do not include markdown code blocks or explanations.`;
+
+  const prompt = {
+    anthropic_version: 'bedrock-2023-05-31',
+    max_tokens: 2000,
+    system: systemPrompt,
+    messages: [
+      {
+        role: 'user',
+        content: "Please write the cover letter now."
+      }
+    ],
+  };
+
+  try {
+    const body = JSON.stringify(prompt);
+
+    const response = await bedrockQueue.add(async () => {
+      return await retryWithBackoff(async () => {
+        const command = new InvokeModelCommand({
+          modelId: 'us.anthropic.claude-3-5-sonnet-20240620-v1:0',
+          contentType: 'application/json',
+          accept: 'application/json',
+          body: new TextEncoder().encode(body),
+        });
+        return await client.send(command);
+      }, 3, 1000);
+    });
+
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    return responseBody.content[0].text.trim();
+
+  } catch (error) {
+    console.error('Error generating cover letter:', error);
+    throw new Error('Failed to generate cover letter. Please try again.');
+  }
+}
+
 // Chat with Resume Builder AI
 // Returns both the AI response text and any extracted profile data updates
 export async function chatWithResumeBuilder(
@@ -947,6 +1005,7 @@ export async function chatWithResumeBuilder(
   3.  **Update** the profile data structure if new information is found.
   4.  **Delete** information if the user explicitly requests removal (use "deleteWorkExperience" or "deleteEducation").
   5.  **Ask** the next logical question to gather missing information.
+  6.  **Cover Letter**: Once all sections are complete, ask the user if they want a generated cover letter. If they say yes, generate a professional cover letter based on their profile and return it in the "coverLetter" field.
   
   DATA STRUCTURE FOR EXTRACTION (JSON):
   {
@@ -973,7 +1032,8 @@ export async function chatWithResumeBuilder(
     "skills": ["string"],
     "languages": [
       { "name": "string", "proficiency": "basic" | "intermediate" | "advanced" | "native" }
-    ]
+    ],
+    "coverLetter": "string (The full generated cover letter text)"
   }
   
   STRICT CONVERSATION FLOW (FOLLOW THIS ORDER):
@@ -990,6 +1050,11 @@ export async function chatWithResumeBuilder(
   5.  **Skills**: Ask for technical and soft skills.
   6.  **Languages**: Ask for languages known.
   7.  **Projects** (Optional): Ask if they want to add any key projects.
+  8.  **Completion & Cover Letter**: 
+      -   If the user says "I'm done" or "That's all", ask if they want to review or add anything else.
+      -   **CRITICAL**: If the profile seems complete, ASK: "Would you like me to generate a cover letter for you based on your profile?"
+      -   If the user agrees, GENERATE the cover letter and put it in the "coverLetter" field in extractedData.
+      -   **CRITICAL**: When returning the generated cover letter, your "response" text MUST say something like: "I've generated a cover letter for you. Please check the 'Cover Letter' tab to review it."
   
   INTERACTION GUIDELINES:
   -   **Be Guided**: Do not jump around. Stick to the current section until it is complete.
@@ -1118,3 +1183,85 @@ export async function chatWithResumeBuilder(
     throw error;
   }
 }
+
+// Optimize resume using AWS Bedrock
+export async function optimizeResumeWithBedrock(
+  currentProfile: any,
+  jobTitle: string,
+  jobDescription: string
+): Promise<any> {
+  const client = getBedrockClient();
+
+  const systemPrompt = `You are an expert Resume Optimizer.
+I will provide you with a user's current resume profile and a target Job Description.
+Your task is to optimize the resume profile to better match the Job Description, focusing on ATS keywords, relevance, and impact.
+
+Instructions:
+1. Analyze the Job Description for key skills, requirements, and terminology.
+2. Rewrite the professional summary (in personalInfo) if needed to highlight relevance to this specific role.
+3. Rewrite work experience descriptions to emphasize matching skills and achievements. Use strong action verbs.
+4. Reorder or add skills to the 'skills' array to match the JD.
+5. Provide a detailed "Optimization Summary" explaining what changes were made and why. IMPORTANT: Format this as a structured list using bullet points (-) or numbered list (1.) separated by newlines. Do not write a single block of text.
+
+Output Format:
+Return a JSON object with the following structure:
+{
+  "optimizedProfile": { ...UserProfile object... },
+  "optimizationSummary": "Structured explanation of changes with bullet points..."
+}
+
+Do NOT add markdown formatting around the JSON. Return ONLY the raw JSON object.
+`;
+
+  const prompt = {
+    anthropic_version: 'bedrock-2023-05-31',
+    max_tokens: 4000,
+    system: systemPrompt,
+    messages: [
+      {
+        role: 'user',
+        content: `Current Profile:
+${JSON.stringify(currentProfile)}
+
+Target Job Title: ${jobTitle}
+Target Job Description:
+${jobDescription}
+
+Optimize this profile and return the JSON object.`
+      }
+    ],
+  };
+
+  try {
+    const body = JSON.stringify(prompt);
+
+    const response = await bedrockQueue.add(async () => {
+      return await retryWithBackoff(async () => {
+        const command = new InvokeModelCommand({
+          modelId: 'us.anthropic.claude-3-5-sonnet-20240620-v1:0',
+          contentType: 'application/json',
+          accept: 'application/json',
+          body: new TextEncoder().encode(body),
+        });
+        return await client.send(command);
+      }, 3, 1000);
+    });
+
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    const text = responseBody.content[0].text.trim();
+
+    // Extract JSON
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+
+    // Fallback try to parse the whole text
+    return JSON.parse(text);
+
+  } catch (error) {
+    console.error('Bedrock optimization error:', error);
+    throw error;
+  }
+}
+

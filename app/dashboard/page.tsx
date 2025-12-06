@@ -149,10 +149,7 @@ export default function DashboardPage() {
       <Sidebar />
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pt-6 md:px-10 md:pl-72">
-        {/* Logo Section */}
-        <div className="mb-4 text-center animate-fade-in" style={{ animationDelay: "0.1s" }}>
-          <Logo />
-        </div>
+
 
         {/* Hero */}
         <section className={`${glassPanel} p-6`}>
@@ -408,10 +405,10 @@ export default function DashboardPage() {
                     <span className="font-semibold text-white">
                       {profile.availability.startDate
                         ? formatDateRange(
-                            profile.availability.startDate,
-                            null,
-                            false,
-                          )
+                          profile.availability.startDate,
+                          null,
+                          false,
+                        )
                         : "Not set"}
                     </span>
                   </div>
