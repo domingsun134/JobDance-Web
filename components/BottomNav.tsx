@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiHome, FiUser, FiMessageCircle, FiFileText } from "react-icons/fi";
+import { FiHome, FiUser, FiMessageCircle, FiFileText, FiCpu } from "react-icons/fi";
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -11,6 +11,7 @@ export default function BottomNav() {
     { href: "/dashboard", icon: FiHome, label: "Home" },
     { href: "/interview", icon: FiMessageCircle, label: "Interview" },
     { href: "/resume-builder", icon: FiFileText, label: "Resume" },
+    { href: "/resume-optimization", icon: FiCpu, label: "Optimize" },
     { href: "/onboarding", icon: FiUser, label: "Profile" },
   ];
 
