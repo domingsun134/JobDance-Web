@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "JobDance Application Tracker",
+    "version": "1.0",
+    "description": "Track job applications and save them to your JobDance dashboard.",
+    "permissions": [
+        "activeTab",
+        "storage",
+        "cookies",
+        "scripting"
+    ],
+    "host_permissions": [
+        "http://localhost:3000/*",
+        "https://*.linkedin.com/*",
+        "https://*.indeed.com/*",
+        "https://*.glassdoor.com/*",
+        "https://*.greenhouse.io/*",
+        "https://*.lever.co/*"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "background": {
+        "service_worker": "background.js"
+    }
+}

@@ -7,54 +7,7 @@ import Link from 'next/link';
 
 export function Hero() {
     return (
-        <div className="relative min-h-screen bg-black overflow-hidden">
-            {/* Animated background gradient */}
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20" />
-
-            {/* Animated grid pattern */}
-            <div className="absolute inset-0 opacity-20">
-                <div className="absolute inset-0" style={{
-                    backgroundImage: `linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
-                           linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)`,
-                    backgroundSize: '50px 50px'
-                }} />
-            </div>
-
-            {/* Floating orbs - Optimized for mobile */}
-            <motion.div
-                className="absolute top-20 left-10 w-72 h-72 bg-purple-500/30 rounded-full blur-3xl"
-                animate={{
-                    y: [0, 30, 0],
-                    scale: [1, 1.1, 1],
-                }}
-                transition={{
-                    duration: 8,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                }}
-                style={{
-                    willChange: 'transform',
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
-                }}
-            />
-            <motion.div
-                className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl"
-                animate={{
-                    y: [0, -40, 0],
-                    scale: [1, 1.2, 1],
-                }}
-                transition={{
-                    duration: 10,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                }}
-                style={{
-                    willChange: 'transform',
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
-                }}
-            />
+        <div className="relative min-h-screen overflow-hidden">
 
             {/* Navigation */}
             <motion.nav

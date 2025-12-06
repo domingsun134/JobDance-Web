@@ -78,9 +78,9 @@ export function Features() {
     const isInView = useInView(ref, { once: true, amount: 0.2 });
 
     return (
-        <section id="features" className="relative py-32 bg-black">
+        <section id="features" className="relative py-32">
             {/* Background decoration */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black via-purple-950/10 to-black" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-950/10 to-transparent" />
 
             <div className="relative container mx-auto px-4">
                 <motion.div

@@ -12,7 +12,7 @@ export function CTA() {
     const benefits: string[] = [];
 
     return (
-        <section className="relative py-32 bg-black overflow-hidden">
+        <section className="relative py-32 overflow-hidden">
             {/* Animated background */}
             <div className="absolute inset-0">
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-cyan-600/20 to-pink-600/20" />

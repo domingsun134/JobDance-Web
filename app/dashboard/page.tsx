@@ -26,6 +26,7 @@ import {
 import { formatDateRange } from "@/lib/utils";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
+import Logo from "@/components/Logo";
 
 const glassPanel =
   "relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(6,182,212,0.15)]";
@@ -148,6 +149,8 @@ export default function DashboardPage() {
       <Sidebar />
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pt-6 md:px-10 md:pl-72">
+
+
         {/* Hero */}
         <section className={`${glassPanel} p-6`}>
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -402,10 +405,10 @@ export default function DashboardPage() {
                     <span className="font-semibold text-white">
                       {profile.availability.startDate
                         ? formatDateRange(
-                            profile.availability.startDate,
-                            null,
-                            false,
-                          )
+                          profile.availability.startDate,
+                          null,
+                          false,
+                        )
                         : "Not set"}
                     </span>
                   </div>

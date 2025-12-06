@@ -36,7 +36,7 @@ export function HowItWorks() {
     const isInView = useInView(ref, { once: true, amount: 0.2 });
 
     return (
-        <section id="how-it-works" className="relative py-32 bg-gradient-to-b from-black via-cyan-950/10 to-black overflow-hidden">
+        <section id="how-it-works" className="relative py-32 bg-gradient-to-b from-transparent via-cyan-950/10 to-transparent overflow-hidden">
             {/* Animated background elements */}
             <motion.div
                 animate={{

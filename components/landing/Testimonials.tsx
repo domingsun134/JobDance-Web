@@ -33,8 +33,8 @@ export function Testimonials() {
     const isInView = useInView(ref, { once: true, amount: 0.2 });
 
     return (
-        <section id="testimonials" className="relative py-32 bg-black">
-            <div className="absolute inset-0 bg-gradient-to-b from-black via-purple-950/5 to-black" />
+        <section id="testimonials" className="relative py-32">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-950/5 to-transparent" />
 
             <div className="relative container mx-auto px-4">
                 <motion.div

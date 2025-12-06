@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { useReactToPrint } from 'react-to-print';
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
 import ResumePreview, { TemplateType } from '@/components/ResumePreview';
 import { getUserProfile, updateUserProfile, UserProfile, getCurrentUser } from '@/lib/auth';
-import { FiSend, FiUser, FiCpu, FiDownload, FiMenu } from 'react-icons/fi';
+import { FiSend, FiUser, FiCpu, FiDownload, FiMenu, FiFileText } from 'react-icons/fi';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -31,8 +30,44 @@ export default function ResumeBuilderPage() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('modern');
+    const [coverLetter, setCoverLetter] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'resume' | 'coverLetter'>('resume');
+    const [showToast, setShowToast] = useState(false);
+    const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
 
     const inputRef = useRef<HTMLInputElement>(null);
+
+    const handleGenerateCoverLetter = async () => {
+        if (!profile) return;
+        setGeneratingCoverLetter(true);
+        try {
+            const res = await fetch("/api/cover-letter/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userProfile: profile,
+                    jobDescription: "" // Optional: could add a modal to ask for this later
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.coverLetter) {
+                setCoverLetter(data.coverLetter);
+                // Save to profile
+                const updatedProfile = { ...profile, coverLetter: data.coverLetter };
+                setProfile(updatedProfile);
+                await updateUserProfile(updatedProfile);
+            } else {
+                console.error("API Error:", data.error);
+                alert("Failed to generate cover letter: " + (data.error || "Unknown error"));
+            }
+        } catch (error) {
+            console.error("Generation error:", error);
+            alert("Failed to generate cover letter. Please try again.");
+        } finally {
+            setGeneratingCoverLetter(false);
+        }
+    };
 
     // Initial load
     useEffect(() => {
@@ -46,6 +81,10 @@ export default function ResumeBuilderPage() {
 
                 const userProfile = await getUserProfile();
                 setProfile(userProfile);
+                // Load cover letter if exists
+                if (userProfile?.coverLetter) {
+                    setCoverLetter(userProfile.coverLetter);
+                }
 
                 // Check if profile has any meaningful data
                 const hasData = userProfile && (
@@ -285,6 +324,15 @@ export default function ResumeBuilderPage() {
                     hasChanges = true;
                 }
 
+                if (data.extractedData.coverLetter) {
+                    setCoverLetter(data.extractedData.coverLetter);
+                    setActiveTab('coverLetter');
+
+                    // Save cover letter to profile
+                    updatedProfile.coverLetter = data.extractedData.coverLetter;
+                    hasChanges = true;
+                }
+
                 if (hasChanges) {
                     console.log("Saving updated profile:", updatedProfile);
                     setProfile(updatedProfile);
@@ -312,102 +360,44 @@ export default function ResumeBuilderPage() {
         }
     };
 
-    const handleExportPDF = async () => {
-        const element = document.getElementById('resume-preview');
-        if (!element) return;
+    const resumePreviewRef = useRef<HTMLDivElement>(null);
 
-        setIsExporting(true);
-        try {
-            // Clone the element to ensure we capture the full height without scrollbars
-            const clone = element.cloneNode(true) as HTMLElement;
-            clone.style.position = 'absolute';
-            clone.style.top = '-9999px';
-            clone.style.left = '0';
-            clone.style.width = '210mm'; // Force A4 width
-            clone.style.height = 'auto';
-            clone.style.overflow = 'visible'; // Ensure no clipping
-            document.body.appendChild(clone);
-
-            // --- Smart Pagination Logic ---
-            const A4_HEIGHT_PX = 1123; // Approx height of A4 at 96 DPI (297mm)
-            const PAGE_MARGIN_PX = 40; // Top/Bottom margin buffer
-            const CONTENT_HEIGHT_PER_PAGE = A4_HEIGHT_PX - (PAGE_MARGIN_PX * 2);
-
-            const blocks = clone.querySelectorAll('.resume-block');
-            let currentPageHeight = 0;
-
-            blocks.forEach((block) => {
-                const htmlBlock = block as HTMLElement;
-                const blockHeight = htmlBlock.offsetHeight;
-
-                // Check if adding this block exceeds the current page height
-                if (currentPageHeight + blockHeight > CONTENT_HEIGHT_PER_PAGE) {
-                    // It exceeds, so we need to push this block to the next page
-                    // Calculate how much space is left on the current page
-                    const spacerHeight = A4_HEIGHT_PX - currentPageHeight;
-
-                    // Create a spacer div
-                    const spacer = document.createElement('div');
-                    spacer.style.height = `${spacerHeight}px`;
-                    spacer.style.width = '100%';
-                    spacer.style.display = 'block';
-
-                    // Insert spacer before the current block
-                    htmlBlock.parentNode?.insertBefore(spacer, htmlBlock);
-
-                    // Reset current page height to start of new page + this block's height
-                    currentPageHeight = blockHeight;
-                } else {
-                    // It fits, just add to height
-                    currentPageHeight += blockHeight;
-                }
-            });
-            // -----------------------------
-
-            const canvas = await html2canvas(clone, {
-                scale: 2, // Higher scale for better quality
-                useCORS: true,
-                logging: false,
-                windowWidth: clone.scrollWidth,
-                windowHeight: clone.scrollHeight
-            });
-
-            document.body.removeChild(clone);
-
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: 'a4',
-            });
-
-            const imgWidth = 210; // A4 width in mm
-            const pageHeight = 297; // A4 height in mm
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            let heightLeft = imgHeight;
-            let position = 0;
-
-            // Add first page
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-
-            // Add subsequent pages if content overflows
-            while (heightLeft > 0) {
-                position = heightLeft - imgHeight; // Shift image up
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, - (pageHeight * Math.ceil((imgHeight - heightLeft) / pageHeight)), imgWidth, imgHeight);
-                heightLeft -= pageHeight;
+    const handleExportPDF = useReactToPrint({
+        contentRef: resumePreviewRef,
+        documentTitle: `Resume-${profile?.personalInfo?.fullName || 'Draft'}`,
+        bodyClass: "print-preview",
+        pageStyle: `
+            @page {
+                size: auto;
+                margin: 15mm 0mm;
             }
-
-            pdf.save('resume.pdf');
-        } catch (error) {
-            console.error('Error exporting PDF:', error);
-            alert('Failed to export PDF. Please try again.');
-        } finally {
+            @media print {
+                body {
+                    -webkit-print-color-adjust: exact;
+                }
+                #resume-preview {
+                    box-shadow: none !important;
+                }
+            }
+            }
+        `,
+        onBeforeGetContent: () => {
+            if (!resumePreviewRef.current) {
+                console.error("Print Error: Resume ref is null");
+                alert("Error: content to print not found. Please refresh and try again.");
+                return Promise.reject("Ref is null");
+            }
+            setIsExporting(true);
+            return Promise.resolve();
+        },
+        onAfterPrint: () => setIsExporting(false),
+        onPrintError: (errorLocation, error) => {
             setIsExporting(false);
-        }
-    };
+            console.error("Print Error:", errorLocation, error);
+            alert("Failed to export PDF. Please try again.");
+        },
+        suppressErrors: false,
+    });
 
     if (loading) {
         return (
@@ -544,39 +534,115 @@ export default function ResumeBuilderPage() {
                             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-6">
                                 <div className="flex items-center gap-4">
                                     <h2 className="text-lg font-semibold text-white">Live Preview</h2>
+
+                                    {/* Main Tabs */}
                                     <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
-                                        {(['modern', 'professional', 'creative'] as TemplateType[]).map((t) => (
-                                            <button
-                                                key={t}
-                                                onClick={() => setSelectedTemplate(t)}
-                                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${selectedTemplate === t
-                                                    ? 'bg-cyan-500 text-white shadow-lg'
-                                                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                                                    }`}
-                                            >
-                                                {t.charAt(0).toUpperCase() + t.slice(1)}
-                                            </button>
-                                        ))}
+                                        <button
+                                            onClick={() => setActiveTab('resume')}
+                                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${activeTab === 'resume'
+                                                ? 'bg-cyan-500 text-white shadow-lg'
+                                                : 'text-white/60 hover:text-white hover:bg-white/5'
+                                                }`}
+                                        >
+                                            Resume
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('coverLetter')}
+                                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${activeTab === 'coverLetter'
+                                                ? 'bg-cyan-500 text-white shadow-lg'
+                                                : 'text-white/60 hover:text-white hover:bg-white/5'
+                                                }`}
+                                        >
+                                            Cover Letter
+                                        </button>
                                     </div>
-                                </div>
-                                <button
-                                    onClick={handleExportPDF}
-                                    disabled={isExporting}
-                                    className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80 transition hover:border-cyan-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    {isExporting ? (
-                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-cyan-400"></div>
-                                    ) : (
-                                        <FiDownload size={16} />
+
+                                    {/* Generate Cover Letter Button */}
+                                    {activeTab === 'coverLetter' && (
+                                        <button
+                                            onClick={handleGenerateCoverLetter}
+                                            disabled={generatingCoverLetter}
+                                            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg transition-all hover:from-blue-500 hover:to-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {generatingCoverLetter ? (
+                                                <div className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+                                            ) : (
+                                                <FiSend size={12} />
+                                            )}
+                                            <span>{generatingCoverLetter ? 'Generating...' : 'Generate with Profile'}</span>
+                                        </button>
                                     )}
-                                    <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
-                                </button>
+
+                                    {/* Template Selector (Only for Resume) */}
+                                    {activeTab === 'resume' && (
+                                        <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+                                            {(['modern', 'professional', 'creative'] as TemplateType[]).map((t) => (
+                                                <button
+                                                    key={t}
+                                                    onClick={() => setSelectedTemplate(t)}
+                                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${selectedTemplate === t
+                                                        ? 'bg-purple-500 text-white shadow-lg'
+                                                        : 'text-white/60 hover:text-white hover:bg-white/5'
+                                                        }`}
+                                                >
+                                                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {activeTab === 'resume' ? (
+                                    <button
+                                        onClick={handleExportPDF}
+                                        disabled={isExporting}
+                                        className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80 transition hover:border-cyan-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isExporting ? (
+                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-cyan-400"></div>
+                                        ) : (
+                                            <FiDownload size={16} />
+                                        )}
+                                        <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            if (coverLetter) {
+                                                navigator.clipboard.writeText(coverLetter);
+                                                setShowToast(true);
+                                                setTimeout(() => setShowToast(false), 3000);
+                                            }
+                                        }}
+                                        disabled={!coverLetter}
+                                        className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80 transition hover:border-cyan-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <FiFileText size={16} />
+                                        <span>Copy Text</span>
+                                    </button>
+                                )}
                             </div>
                             <div className="flex-1 overflow-y-auto">
-                                <div className="mx-auto max-w-[210mm]">
-                                    <div id="resume-preview" className="overflow-hidden rounded-xl bg-white shadow-2xl">
-                                        <ResumePreview profile={profile} template={selectedTemplate} />
-                                    </div>
+                                <div className="mx-auto max-w-[210mm] p-6">
+                                    {activeTab === 'resume' ? (
+                                        <div ref={resumePreviewRef} id="resume-preview" className="overflow-hidden rounded-xl bg-white shadow-2xl">
+                                            <ResumePreview profile={profile} template={selectedTemplate} />
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-xl bg-white p-12 shadow-2xl min-h-[297mm] text-black">
+                                            {coverLetter ? (
+                                                <div className="whitespace-pre-wrap font-serif text-lg leading-relaxed">
+                                                    {coverLetter}
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center h-full text-gray-400 py-20">
+                                                    <FiFileText size={48} className="mb-4 opacity-50" />
+                                                    <p className="text-lg font-medium">No cover letter generated yet</p>
+                                                    <p className="text-sm mt-2">Ask the AI assistant to generate one for you once your profile is complete.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -585,6 +651,21 @@ export default function ResumeBuilderPage() {
             </div>
 
             <BottomNav />
+
+            {/* Toast Notification */}
+            {showToast && (
+                <div className="fixed bottom-24 right-8 z-50 animate-fade-in-up">
+                    <div className="flex items-center gap-3 rounded-xl border border-cyan-500/20 bg-slate-900/90 px-4 py-3 text-white shadow-2xl backdrop-blur-md">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-400">
+                            <FiFileText size={16} />
+                        </div>
+                        <div>
+                            <p className="font-medium text-sm">Copied to clipboard!</p>
+                            <p className="text-xs text-white/60">Cover letter is ready to paste</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiHome, FiUser, FiMessageCircle, FiSettings, FiLogOut, FiFileText } from "react-icons/fi";
+import { FiHome, FiUser, FiMessageCircle, FiSettings, FiLogOut, FiFileText, FiSend, FiCpu } from "react-icons/fi";
 import { logoutUser } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 
+import Logo from "@/components/Logo";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Sidebar() {
@@ -17,6 +17,7 @@ export default function Sidebar() {
         { href: "/dashboard", icon: FiHome, label: "Home" },
         { href: "/interview", icon: FiMessageCircle, label: "Interview" },
         { href: "/resume-builder", icon: FiFileText, label: "Resume Builder" },
+        { href: "/resume-optimization", icon: FiCpu, label: "Resume Optimization" },
         { href: "/onboarding", icon: FiUser, label: "Profile" },
     ];
 
@@ -29,45 +30,7 @@ export default function Sidebar() {
         <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 bg-card border-r border-border z-50 transition-colors duration-300">
             {/* Logo Area */}
             <div className="p-6 flex flex-col items-center justify-center border-b border-border">
-                {/* Animated Bars */}
-                <div className="flex items-center justify-center gap-1.5 mb-3 h-12">
-                    {/* Bar 1 */}
-                    <div
-                        className="w-2 bg-gradient-to-b from-blue-400 to-blue-300 rounded-lg animate-bar-short"
-                        style={{ animationDelay: "0s" }}
-                    ></div>
-                    {/* Bar 2 */}
-                    <div
-                        className="w-2 bg-gradient-to-b from-orange-400 to-orange-300 rounded-lg animate-bar-long"
-                        style={{ animationDelay: "0s" }}
-                    ></div>
-                    {/* Bar 3 */}
-                    <div
-                        className="w-2 bg-gradient-to-b from-blue-500 to-blue-400 rounded-lg animate-bar-short"
-                        style={{ animationDelay: "0s" }}
-                    ></div>
-                    {/* Bar 4 */}
-                    <div
-                        className="w-2 bg-gradient-to-b from-pink-400 to-pink-300 rounded-lg animate-bar-long"
-                        style={{ animationDelay: "0s" }}
-                    ></div>
-                    {/* Bar 5 */}
-                    <div
-                        className="w-2 bg-gradient-to-b from-green-400 to-green-300 rounded-lg animate-bar-short"
-                        style={{ animationDelay: "0s" }}
-                    ></div>
-                </div>
-
-                {/* Logo Image */}
-                <div className="relative w-48 h-16">
-                    <Image
-                        src="/logo-text.png"
-                        alt="JobDance"
-                        fill
-                        className="object-contain dark:invert-0 invert"
-                        priority
-                    />
-                </div>
+                <Logo className="!mb-0 scale-75" />
             </div>
 
             {/* Navigation Links */}
