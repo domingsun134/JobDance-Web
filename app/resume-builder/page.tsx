@@ -362,7 +362,7 @@ export default function ResumeBuilderPage() {
 
     const resumePreviewRef = useRef<HTMLDivElement>(null);
 
-    const handleExportPDF = useReactToPrint({
+    const printPDF = useReactToPrint({
         contentRef: resumePreviewRef,
         documentTitle: `Resume-${profile?.personalInfo?.fullName || 'Draft'}`,
         bodyClass: "print-preview",
@@ -379,16 +379,9 @@ export default function ResumeBuilderPage() {
                     box-shadow: none !important;
                 }
             }
-            }
         `,
-        onBeforeGetContent: () => {
-            if (!resumePreviewRef.current) {
-                console.error("Print Error: Resume ref is null");
-                alert("Error: content to print not found. Please refresh and try again.");
-                return Promise.reject("Ref is null");
-            }
+        onBeforePrint: () => {
             setIsExporting(true);
-            return Promise.resolve();
         },
         onAfterPrint: () => setIsExporting(false),
         onPrintError: (errorLocation, error) => {
@@ -396,8 +389,16 @@ export default function ResumeBuilderPage() {
             console.error("Print Error:", errorLocation, error);
             alert("Failed to export PDF. Please try again.");
         },
-        suppressErrors: false,
     });
+
+    const handleExportPDF = () => {
+        if (!resumePreviewRef.current) {
+            console.error("Print Error: Resume ref is null");
+            alert("Error: content to print not found. Please refresh and try again.");
+            return;
+        }
+        printPDF();
+    };
 
     if (loading) {
         return (
