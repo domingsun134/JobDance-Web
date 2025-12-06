@@ -39,6 +39,7 @@ export default function ResumeOptimizationPage() {
     const [selectedOptimization, setSelectedOptimization] = useState<ResumeOptimization | null>(null);
     const [viewMode, setViewMode] = useState<'list' | 'create' | 'view'>('list');
     const [previewTab, setPreviewTab] = useState<'resume' | 'coverLetter'>('resume');
+    const [mobileViewTab, setMobileViewTab] = useState<'preview' | 'summary'>('preview');
     const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
@@ -382,8 +383,32 @@ export default function ResumeOptimizationPage() {
                         {/* VIEW MODE - Split View (Resume + Summary) */}
                         {viewMode === 'view' && selectedOptimization && (
                             <div className="h-full flex flex-col lg:flex-row gap-6 overflow-hidden">
+                                {/* Mobile Tab Switcher - Only visible on mobile */}
+                                <div className="lg:hidden flex items-center gap-2 bg-slate-800/50 p-1 rounded-lg border border-white/5 mb-2">
+                                    <button
+                                        onClick={() => setMobileViewTab('preview')}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md transition-all text-sm font-medium ${mobileViewTab === 'preview'
+                                            ? 'bg-cyan-500/20 text-cyan-400 shadow-sm'
+                                            : 'text-gray-400 hover:text-gray-300 hover:bg-white/5'
+                                            }`}
+                                    >
+                                        <FiFileText size={16} />
+                                        Preview
+                                    </button>
+                                    <button
+                                        onClick={() => setMobileViewTab('summary')}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md transition-all text-sm font-medium ${mobileViewTab === 'summary'
+                                            ? 'bg-cyan-500/20 text-cyan-400 shadow-sm'
+                                            : 'text-gray-400 hover:text-gray-300 hover:bg-white/5'
+                                            }`}
+                                    >
+                                        <FiInfo size={16} />
+                                        Summary
+                                    </button>
+                                </div>
+
                                 {/* Left Column: Resume Preview */}
-                                <div className="flex-1 lg:flex-[3] flex flex-col gap-4 min-h-0">
+                                <div className={`${mobileViewTab === 'preview' ? 'flex' : 'hidden'} lg:flex flex-1 lg:flex-[3] flex-col gap-4 min-h-0`}>
                                     <div className="flex justify-between items-center px-1">
                                         <div className="flex items-center gap-2 bg-slate-800/50 p-1 rounded-lg border border-white/5">
                                             <button
@@ -413,23 +438,24 @@ export default function ResumeOptimizationPage() {
                                             className="px-4 py-2 rounded-lg bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 text-sm font-medium transition-all flex items-center gap-2 border border-cyan-500/20"
                                         >
                                             {isExporting ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <FiDownload />}
-                                            Export PDF
+                                            <span className="hidden sm:inline">Export PDF</span>
+                                            <span className="sm:hidden">PDF</span>
                                         </button>
                                     </div>
 
                                     {/* Scrollable Document Container */}
-                                    <div className="flex-1 bg-slate-900/50 rounded-2xl overflow-y-auto border border-white/5 relative shadow-inner p-4 md:p-6 custom-scrollbar">
-                                        <div ref={resumePreviewRef} id="resume-preview" className="max-w-[210mm] mx-auto bg-white shadow-xl min-h-[297mm] origin-top transform-gpu">
+                                    <div className="flex-1 bg-slate-900/50 rounded-2xl overflow-y-auto border border-white/5 relative shadow-inner p-2 sm:p-4 md:p-6 custom-scrollbar">
+                                        <div ref={resumePreviewRef} id="resume-preview" className="max-w-[210mm] mx-auto bg-white shadow-xl min-h-[297mm] origin-top transform-gpu scale-[0.75] sm:scale-[0.85] md:scale-100">
                                             {previewTab === 'resume' ? (
                                                 <ResumePreview profile={selectedOptimization.optimized_profile_data} template="modern" />
                                             ) : (
-                                                <div className="p-12 md:p-16 text-gray-800 font-serif h-full min-h-[297mm] flex flex-col">
+                                                <div className="p-6 sm:p-10 md:p-12 lg:p-16 text-gray-800 font-serif h-full min-h-[297mm] flex flex-col">
                                                     {/* Cover Letter Header */}
-                                                    <div className="mb-12 border-b-2 border-gray-900 pb-6 print:mb-8">
-                                                        <h1 className="text-4xl font-bold uppercase tracking-tight mb-4 text-gray-900">
+                                                    <div className="mb-8 sm:mb-10 md:mb-12 border-b-2 border-gray-900 pb-4 sm:pb-5 md:pb-6 print:mb-8">
+                                                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold uppercase tracking-tight mb-3 sm:mb-4 text-gray-900">
                                                             {selectedOptimization.optimized_profile_data.personalInfo.fullName}
                                                         </h1>
-                                                        <div className="flex flex-wrap gap-4 text-sm text-gray-600 font-medium font-sans">
+                                                        <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4 text-xs sm:text-sm text-gray-600 font-medium font-sans">
                                                             {selectedOptimization.optimized_profile_data.personalInfo.email && (
                                                                 <span>{selectedOptimization.optimized_profile_data.personalInfo.email}</span>
                                                             )}
@@ -443,7 +469,7 @@ export default function ResumeOptimizationPage() {
                                                     </div>
 
                                                     {/* Cover Letter Body */}
-                                                    <div className="flex-1 whitespace-pre-wrap leading-relaxed text-base md:text-lg max-w-[65ch]">
+                                                    <div className="flex-1 whitespace-pre-wrap leading-relaxed text-sm sm:text-base md:text-lg max-w-[65ch]">
                                                         {selectedOptimization.optimized_cover_letter ||
                                                             selectedOptimization.optimized_profile_data.coverLetter ||
                                                             "No cover letter generated for this optimization."}
@@ -455,16 +481,16 @@ export default function ResumeOptimizationPage() {
                                 </div>
 
                                 {/* Right Column: Optimization Summary */}
-                                <div className="flex-none lg:w-80 xl:w-96 flex flex-col gap-4 min-h-0 print:hidden">
-                                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider px-1">Optimization Insights</h3>
+                                <div className={`${mobileViewTab === 'summary' ? 'flex' : 'hidden'} lg:flex flex-none lg:w-80 xl:w-96 flex-col gap-4 min-h-0 print:hidden`}>
+                                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider px-1 hidden lg:block">Optimization Insights</h3>
 
-                                    <div className={`${glassPanel} flex-1 overflow-y-auto p-6 flex flex-col gap-4`}>
-                                        <div className="flex items-start gap-4 pb-4 border-b border-white/5">
+                                    <div className={`${glassPanel} flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4`}>
+                                        <div className="flex items-start gap-3 md:gap-4 pb-4 border-b border-white/5">
                                             <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400 shrink-0">
-                                                <FiInfo size={20} />
+                                                <FiInfo size={18} className="md:w-5 md:h-5" />
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-white text-sm">AI Analysis</h4>
+                                                <h4 className="font-bold text-white text-sm md:text-base">AI Analysis</h4>
                                                 <p className="text-xs text-gray-500 mt-1">Why this was optimized</p>
                                             </div>
                                         </div>
