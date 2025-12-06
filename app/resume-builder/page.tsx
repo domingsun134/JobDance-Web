@@ -382,6 +382,7 @@ export default function ResumeBuilderPage() {
         `,
         onBeforePrint: () => {
             setIsExporting(true);
+            return Promise.resolve();
         },
         onAfterPrint: () => setIsExporting(false),
         onPrintError: (errorLocation, error) => {
