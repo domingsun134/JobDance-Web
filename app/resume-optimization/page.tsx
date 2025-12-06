@@ -142,7 +142,7 @@ export default function ResumeOptimizationPage() {
         }
     };
 
-    const handleExportPDF = useReactToPrint({
+    const printPDF = useReactToPrint({
         contentRef: resumePreviewRef,
         documentTitle: `Optimized-Resume-${selectedOptimization?.job_title || 'Draft'}`,
         bodyClass: "print-preview",
@@ -159,14 +159,8 @@ export default function ResumeOptimizationPage() {
                     box-shadow: none !important;
                 }
             }
-            }
         `,
-        onBeforeGetContent: () => {
-            if (!resumePreviewRef.current) {
-                console.error("Print Error: Resume ref is null");
-                alert("Error: content to print not found. Please refresh and try again.");
-                return Promise.reject("Ref is null");
-            }
+        onBeforePrint: () => {
             setIsExporting(true);
             return Promise.resolve();
         },
@@ -178,8 +172,16 @@ export default function ResumeOptimizationPage() {
             console.error("Print Error:", errorLocation, error);
             alert("Failed to export PDF. Please try again.");
         },
-        suppressErrors: false,
     });
+
+    const handleExportPDF = () => {
+        if (!resumePreviewRef.current) {
+            console.error("Print Error: Resume ref is null");
+            alert("Error: content to print not found. Please refresh and try again.");
+            return;
+        }
+        printPDF();
+    };
 
 
     if (loading) {
