@@ -18,6 +18,42 @@ export interface PersonalInfo {
   portfolio: string;
 }
 
+export interface WorkExperience {
+  id: string;
+  company: string;
+  position: string;
+  startDate: string;
+  endDate: string;
+  current: boolean;
+  description: string;
+}
+
+export interface Education {
+  id: string;
+  institution: string;
+  degree: string;
+  field: string;
+  startDate: string;
+  endDate: string;
+  current: boolean;
+}
+
+export interface Language {
+  name: string;
+  proficiency: 'basic' | 'intermediate' | 'advanced' | 'native';
+}
+
+export interface Availability {
+  startDate: string;
+  duration: string;
+}
+
+export interface Salary {
+  amount: number;
+  currency: string;
+  period: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+}
+
 export interface UserProfile {
   personalInfo: PersonalInfo;
   workExperience: WorkExperience[];
